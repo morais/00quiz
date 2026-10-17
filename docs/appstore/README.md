@@ -6,7 +6,7 @@ Version 1.0 was prepared on October 17, 2026 for [App Store Connect](https://app
 
 | Item | Configuration |
 | --- | --- |
-| App | 00Quiz: Your Daily Five · `com.00quiz.app` |
+| App | 00Quiz: Your AI Quizmaster · `com.00quiz.app` |
 | Version/build | 1.0 / 202610172039 |
 | Platforms | iPhone, iOS 27+, portrait and landscape; Mac and Apple Vision distribution disabled |
 | Build | Apple processing VALID; selected for version 1.0 and assigned to the existing internal TestFlight group |
