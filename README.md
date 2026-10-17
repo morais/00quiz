@@ -2,6 +2,8 @@
 
 **Five questions. Something new, every day.**
 
+Website: [00quiz.com](https://00quiz.com) · [Support](https://00quiz.com/support) · [Privacy](https://00quiz.com/privacy)
+
 00Quiz is a native iPhone quiz app whose question source is your own MCP agent. Connect an agent, ask it to choose your first questions, and schedule a daily task in that agent. Every morning it reads your interests and performance, then publishes five multiple-choice questions and a friendly host message. There is no bundled AI provider, API key requirement, or automatic question generator inside the app.
 
 The implementation follows sibling projects 00Todo and 00Food: SwiftUI, a Cloudflare Worker with D1, native Sign in with Apple, separate app/MCP credentials, and remote MCP OAuth with Apple web sign-in and explicit consent.
@@ -30,4 +32,4 @@ The deployed service exposes `/privacy` and a support contact. Account deletion 
 
 ## License
 
-Source code is MIT licensed; see [LICENSE](LICENSE).
+Source code is MIT licensed; see [LICENSE](LICENSE). The 00Quiz name and artwork are not; see [docs/brand/LICENSE](docs/brand/LICENSE). Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).

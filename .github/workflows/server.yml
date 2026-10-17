@@ -1,0 +1,44 @@
+name: Server
+
+on:
+  push:
+    branches: [main]
+    paths: ["server/**", ".github/workflows/server.yml"]
+  # Every pull request reports the required checks, even when it does not
+  # touch the server, so branch rules never wait on a skipped workflow.
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        # The minimum supported version (CONTRIBUTING.md) and the current LTS.
+        node: ["22", "lts/*"]
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      # --ignore-scripts: this workflow runs on pull_request, so once the
+      # repository is public a fork can propose a package.json/package-lock.json
+      # whose install lifecycle hooks would otherwise execute on the runner.
+      # Nothing in the typecheck or test path needs a postinstall step.
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test

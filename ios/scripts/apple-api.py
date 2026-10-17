@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Assign one processed 00Quiz build to an existing internal TestFlight group.
+"""Call the App Store Connect API without exposing credentials.
 
-Reads the App Store Connect API key and issuer ID from ~/.appstoreconnect.
-Pass --app-id, --group-id, and --build explicitly; no account IDs are committed.
+Usage: apple-api.py METHOD PATH [--body-file request.json]
+Prints the response status and JSON body. Reads the API key and issuer ID from
+~/.appstoreconnect (or ASC_KEY_PATH and ASC_ISSUER_ID); no account IDs are committed.
 """
 
 import argparse
