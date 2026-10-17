@@ -4,6 +4,7 @@ __pycache__/
 node_modules/
 server/.wrangler/
 server/.review-access.json
+server/.review-access.local.json
 server/dist/
 server/wrangler.toml
 server/.dev.vars*

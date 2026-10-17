@@ -30,8 +30,9 @@ function reviewTenantIds(env: Env): Set<string> {
 export async function reviewTenantForAccessCode(env: Env, accessCode: string): Promise<string | null> {
   const allowed = reviewTenantIds(env);
   if (!allowed.size || !/^qq_review_[A-Za-z0-9_-]{43}$/.test(accessCode)) return null;
-  const credential = await env.DB.prepare(`SELECT tenant_id, expires_at, revoked_at
-    FROM review_credentials WHERE token_hash = ?`)
+  const credential = await env.DB.prepare(`SELECT r.tenant_id, r.expires_at, r.revoked_at
+    FROM review_credentials r JOIN tenants t ON t.id = r.tenant_id
+    WHERE r.token_hash = ? AND t.apple_subject IS NULL`)
     .bind(await sha256Hex(accessCode)).first<ReviewCredential>();
   return credential && !credential.revoked_at && credential.expires_at > new Date().toISOString()
     && allowed.has(credential.tenant_id) ? credential.tenant_id : null;

@@ -1,6 +1,7 @@
 import { apiError, routeApi, json, type Env } from "./api";
 import { routeMcp } from "./mcp";
 import { serveInstructions } from "./agentInstructions";
+import { ensureReviewFixture, resetReviewQuiz, signInForReview } from "./review";
 import { authenticate } from "./auth";
 import { deleteAccount, signInWithApple, signOut } from "./appAuth";
 import { disconnectMcpConnection, listMcpConnections } from "./mcpConnections";
@@ -18,7 +19,7 @@ export default {
       if (!(await sourceAllowed(env, req))) return tooManyRequests();
       if (path === "/agent-instructions" && (method === "GET" || method === "HEAD")) return serveInstructions(req);
       if (path === "/" || path === "/privacy") return new Response(page(path === "/privacy"), { headers: { "Content-Type": "text/html; charset=utf-8" } });
-      if (path.startsWith("/oauth/") || path.startsWith("/auth/") || path === "/v1/auth/apple" || path === "/v1/auth/delete-account") {
+      if (path.startsWith("/oauth/") || path.startsWith("/auth/") || path === "/v1/auth/apple" || path === "/v1/auth/review" || path === "/v1/auth/delete-account") {
         if (!(await signInAllowed(env, req))) return tooManyRequests(); maybeSweep(env, ctx);
       }
       if ((path === "/.well-known/oauth-protected-resource" || path === "/.well-known/oauth-protected-resource/mcp") && method === "GET") return protectedResourceMetadata(env);
@@ -32,6 +33,7 @@ export default {
       if (path === "/oauth/consent" && method === "POST") return decideConsent(req, env);
       if (path === "/oauth/token" && method === "POST") return exchangeCode(req, env);
       if (path === "/v1/auth/apple" && method === "POST") return signInWithApple(req, env, ctx);
+      if (path === "/v1/auth/review" && method === "POST") return signInForReview(req, env);
       if (path === "/mcp") {
         const principal = await authenticate(req, env, "mcp");
         if (!principal) return authChallenge(env);
@@ -44,6 +46,8 @@ export default {
         if (!(await tenantAllowed(env, principal.tenantId))) return tooManyRequests();
         if (path === "/v1/auth/logout" && method === "POST") return signOut(env, principal);
         if (path === "/v1/auth/delete-account" && method === "POST") return deleteAccount(req, env, principal);
+        if (path === "/v1/review/reset" && method === "POST") return resetReviewQuiz(env, principal);
+        if (path === "/v1/snapshot" && method === "GET") await ensureReviewFixture(env, principal.tenantId);
         if (path === "/v1/account/mcp-connections" && method === "GET") return listMcpConnections(env, principal);
         const connection = /^\/v1\/account\/mcp-connections\/([a-f0-9-]{32,36})$/.exec(path);
         if (connection && method === "DELETE") return disconnectMcpConnection(env, principal, connection[1]);

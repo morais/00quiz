@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Environment(QuizStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var deleteAccount = false
+    @State private var resettingSamples = false
     var body: some View {
         List {
             Section {
@@ -20,8 +21,22 @@ struct SettingsView: View {
                 LabeledContent("Version", value: "\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"))")
             }
             Section {
-                Button(store.isDemo ? "Leave demo" : "Sign out") { Task { await store.signOut(); if !store.isSignedIn { dismiss() } } }
-                if !store.isDemo { Button("Delete account", role: .destructive) { deleteAccount = true } }
+                Button(store.isDemo ? "Leave demo" : store.isReviewAccount ? "Leave sample account" : "Sign out") { Task { await store.signOut(); if !store.isSignedIn { dismiss() } } }
+                if !store.isDemo && !store.isReviewAccount { Button("Delete account", role: .destructive) { deleteAccount = true } }
+            }
+            if store.isReviewAccount {
+                Section {
+                    Text("App Review sample account").font(.headline)
+                    Text("These quizzes and past scores are sample data. Restart today’s quiz to try answering again.").foregroundStyle(.secondary)
+                    Button(resettingSamples ? "Restarting…" : "Restart sample quiz") {
+                        resettingSamples = true
+                        Task {
+                            defer { resettingSamples = false }
+                            do { try await store.resetReviewQuiz() }
+                            catch { store.notice = error.localizedDescription }
+                        }
+                    }.disabled(resettingSamples)
+                }
             }
             if let notice = store.notice { Section { Text(notice).font(.footnote).foregroundStyle(.secondary) } }
         }

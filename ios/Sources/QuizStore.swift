@@ -8,7 +8,7 @@ struct QuizError: LocalizedError {
     var status: Int? = nil
     var errorDescription: String? { message }
 }
-private struct Session: Codable { let token: String; let tenantID: String }
+private struct Session: Codable { let token: String; let tenantID: String; var isReview: Bool? = nil }
 private struct ServerFailure: Decodable { let error: String }
 
 @MainActor @Observable final class QuizStore {
@@ -22,6 +22,7 @@ private struct ServerFailure: Decodable { let error: String }
     private var session: Session?
     private var refreshInProgress = false
     private let keychainService = "com.00quiz.app.session"
+    var isReviewAccount: Bool { session?.isReview == true }
 
     init() {
         session = readSession()
@@ -67,6 +68,22 @@ private struct ServerFailure: Decodable { let error: String }
             let state: QuizSnapshot = try await request("v1/snapshot")
             snapshot = state; lastRefreshed = .now; notice = nil; persist()
         } catch is CancellationError {} catch { notice = error.localizedDescription }
+    }
+
+    func signInForReview(accessCode: String) async throws {
+        struct Login: Decodable { struct Tenant: Decodable { let id: String; let isReview: Bool }; let token: String; let tenant: Tenant }
+        let login: Login = try await request("v1/auth/review", method: "POST", payload: ["accessCode": accessCode], authenticated: false)
+        guard login.tenant.isReview else { throw QuizError(message: "This is not a sample account.") }
+        let newSession = Session(token: login.token, tenantID: login.tenant.id, isReview: true)
+        try saveSession(newSession)
+        session = newSession; isDemo = false; isSignedIn = true; snapshot = nil
+        await refresh()
+    }
+
+    func resetReviewQuiz() async throws {
+        guard isReviewAccount else { return }
+        let state: QuizSnapshot = try await request("v1/review/reset", method: "POST")
+        snapshot = state; notice = nil; persist()
     }
 
     func answer(packID: String, questionIndex: Int, choiceIndex: Int) async throws {

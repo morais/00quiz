@@ -40,6 +40,9 @@ struct TodayView: View {
                 if store.isDemo {
                     Label("Demo · sample questions and progress", systemImage: "eye")
                         .font(.caption).foregroundStyle(.secondary)
+                } else if store.isReviewAccount {
+                    Label("App Review · sample account", systemImage: "eye")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 HStack(alignment: .center, spacing: 12) {
                     Text("A little more\ncurious.")

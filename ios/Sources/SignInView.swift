@@ -7,6 +7,7 @@ struct SignInView: View {
     @State private var nonce = ""
     @State private var busy = false
     @State private var errorText: String?
+    @State private var reviewCode = ""
 
     var body: some View {
         // A scroll view that is at least screen-height keeps the centred
@@ -80,6 +81,27 @@ struct SignInView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+            DisclosureGroup("Reviewer access") {
+                VStack(spacing: 12) {
+                    SecureField("Review access code", text: $reviewCode)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .textFieldStyle(.roundedBorder)
+                    Button("Open sample account") {
+                        busy = true
+                        Task {
+                            defer { busy = false; reviewCode = "" }
+                            do { try await store.signInForReview(accessCode: reviewCode.trimmingCharacters(in: .whitespacesAndNewlines)) }
+                            catch { errorText = error.localizedDescription }
+                        }
+                    }.disabled(reviewCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || busy)
+                    Text("For the dedicated sample account provided to reviewers.").font(.caption).foregroundStyle(.secondary)
+                }.padding(.top, 8)
+            }.font(.footnote).disabled(busy)
+            HStack {
+                Link("Privacy", destination: URL(string: "https://00quiz.com/privacy")!)
+                Text("·").foregroundStyle(.secondary)
+                Link("Support", destination: URL(string: "https://00quiz.com/support")!)
+            }.font(.footnote)
         }
         .padding(28)
         .frame(maxWidth: 560)

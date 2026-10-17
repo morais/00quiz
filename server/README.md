@@ -13,6 +13,8 @@ Install `APPLE_PRIVATE_KEY` and a random 32+ character `OAUTH_SIGNING_SECRET` wi
 | Method | Path | Purpose |
 | --- | --- | --- |
 | POST | `/v1/auth/apple` | Native Apple identity token/code/nonce exchange; optional initial IANA `timeZone` |
+| POST | `/v1/auth/review` | Optional code exchange for an allowlisted synthetic App Review account |
+| POST | `/v1/review/reset` | Restart only the synthetic reviewer account’s current quiz |
 | POST | `/v1/auth/logout` | Revoke the current app credential |
 | POST | `/v1/auth/delete-account` | Fresh matching Apple sign-in, token revocation, cascading data deletion |
 | GET | `/v1/snapshot` | Today's redacted quiz, preferences, streaks and 90 previous quizzes |
@@ -42,3 +44,11 @@ No server-side cron generates questions. The user schedules tool calls in their 
 Each run should read context and compare `agentInstructions.version` with the guidance it last read. Refresh through `get_quiz_instructions` only when new, or every run if the agent cannot persist its guidance. Version metadata rides on the existing context call; there is no extra change-polling request, subscription or persistent connection. Old prompts that already call context also receive the new version and pointer to current guidance.
 
 `scripts/smoke-production.mjs` checks the official deployment using a short-lived synthetic account, including publish/retry, scoring, streaks, feedback, credential separation and the OAuth redirect to Apple. It requires authenticated Wrangler, prints no raw credentials, and removes its own account in a finally block. It does not test an actual human's Apple consent round trip.
+
+## App Review access
+
+Reviewer access is disabled unless `REVIEW_TENANT_IDS` names a dedicated synthetic tenant. Run `node scripts/provision-review.mjs` to provision one (or `--local` for development). The raw high-entropy code is written only to ignored `.review-access.json` with mode 0600; D1 stores its hash and expiry. Add the printed tenant UUID to the Worker variable, deploy after verifying Wrangler authentication, and place the code in App Store Connect’s secure reviewer password field. Never put it in notes, screenshots, source control or a distributed app binary.
+
+Both native and MCP review sign-in require an unrevoked, unexpired code and an allowlisted tenant whose Apple subject is null. A real Apple account cannot be used even if the allowlist is misconfigured. The native exchange issues a normal app-only credential; MCP still uses resource-bound OAuth, PKCE and consent. Review access creates five fixed questions for the real local day and three completed sample days, preserves existing answers and agent-published packs, and offers a reviewer-only reset. Personal accounts never receive these fixtures.
+
+`node scripts/smoke-review.mjs` exercises the deployed synthetic reviewer account, scoring, reset, OAuth consent, PKCE, MCP context and app/MCP credential separation. It restores today’s sample quiz and revokes only its own test grants. Removing the tenant from `REVIEW_TENANT_IDS` disables further review exchanges; revoke its existing credentials as well when retiring access.

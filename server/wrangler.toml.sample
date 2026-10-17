@@ -17,6 +17,8 @@ APPLE_KEY_ID = "REPLACE_WITH_SIGN_IN_WITH_APPLE_KEY_ID"
 # MCP_VERIFIED_CLIENTS = '{"https://client.example/callback":"My Agent"}'
 # The saved account IANA time zone controls calendar days; there is no global
 # quiz-date override and callers cannot submit a fictitious current date.
+# Optional, dedicated synthetic App Review tenant UUIDs (never real Apple accounts):
+# REVIEW_TENANT_IDS = "REPLACE_WITH_SYNTHETIC_REVIEW_TENANT_UUID"
 
 [[routes]]
 pattern = "api.example.com"

@@ -33,3 +33,7 @@ The deployed service exposes `/privacy` and a support contact. Account deletion 
 ## License
 
 Source code is MIT licensed; see [LICENSE](LICENSE). The 00Quiz name and artwork are not; see [docs/brand/LICENSE](docs/brand/LICENSE). Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
+
+## App Store release preparation
+
+The listing, six native screenshots and review walkthrough are in [`docs/appstore`](docs/appstore/README.md). A separate simulator-only screenshot app uses production views with fictional fixtures. The release app also supports a clearly labelled, isolated reviewer account so App Review can exercise the live backend without a personal agent account. Credentials and signing/deployment state remain ignored.

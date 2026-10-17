@@ -64,7 +64,12 @@ try {
   const client = await registration.json();
   const authorize = new URL(origin + "/oauth/authorize");
   authorize.search = new URLSearchParams({ client_id: client.client_id, redirect_uri: "https://example.com/quiz-callback", response_type: "code", code_challenge_method: "S256", code_challenge: "A".repeat(43), resource: origin + "/mcp", scope: "quiz:read quiz:write" });
-  const redirect = await fetch(authorize, { redirect: "manual" });
+  let redirect = await fetch(authorize, { redirect: "manual" });
+  if (redirect.status === 200) {
+    const flow = (await redirect.text()).match(/name="flow" value="([^"]+)"/)?.[1];
+    assert.ok(flow, "Configured reviewer sign-in must preserve the Apple sign-in option");
+    redirect = await fetch(origin + "/oauth/login?flow=" + encodeURIComponent(flow), { redirect: "manual" });
+  }
   assert.equal(redirect.status, 302);
   const destination = new URL(redirect.headers.get("location"));
   assert.equal(destination.origin, "https://appleid.apple.com");
