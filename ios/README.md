@@ -12,6 +12,18 @@ xcodebuild -project ZeroZeroQuiz.xcodeproj -scheme ZeroZeroQuiz \
 
 The sign-in page's **Try with demo data** opens a clearly labelled local sample quiz. Debug builds also accept `--demo` as a launch argument. Demo answers never contact the backend or update a real account. Preferences start empty in both demo and real accounts, so the agent chooses unless the user supplies them.
 
+After completing all five questions, **Let a friend try** opens a fresh in-memory attempt at the same quiz. The normal question view reveals feedback only after each guest answer. The end screen compares both scores and question results. Guest answers are discarded on closing; they never enter the account store, backend, history, streak or agent performance data.
+
+Run the guest-session checks from the repository root:
+
+```sh
+swiftc -module-cache-path /tmp/00quiz-swift-module-cache \
+  ios/Sources/Models.swift ios/Sources/DemoData.swift \
+  ios/Sources/FriendQuizSession.swift ios/Tests/FriendQuizSessionTests.swift \
+  -o /tmp/00quiz-friend-tests
+/tmp/00quiz-friend-tests
+```
+
 The approved option 2 artwork lives in `docs/brand/sources/00quiz-app-icon-master.png`. Run `python3 ios/scripts/generate-brand.py` from the repository root (requires Pillow) to resize it into opaque App Store/iPhone icons and the shared in-app mark. The script validates the source and preserves the artwork; it does not redraw it.
 
 ## TestFlight

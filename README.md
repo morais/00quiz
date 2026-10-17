@@ -8,6 +8,7 @@ The implementation follows sibling projects 00Todo and 00Food: SwiftUI, a Cloudf
 
 - Exactly five questions per published local calendar day, four choices each, one attempt per question. Correct answers, explanations and optional HTTPS sources appear after answering. Past quizzes reveal their explanations for review.
 - Finish all five on consecutive calendar days to earn a streak, regardless of score. A missed day resets it. Today remains open until midnight in the saved time zone.
+- After completing a quiz, let a friend try the same five questions on your phone. Guest answers stay in memory, with scores and question results compared at the end. They never change account history, streaks or agent performance data.
 - Interests, language and difficulty are optional. The agent can establish defaults; the app can edit or clear them. New native accounts use the iPhone's time zone. Later logins preserve it; Settings can update it when travelling.
 - Published quizzes are immutable. Publishing identical content for the same day is idempotent. An agent can prepare today through seven days ahead; future quizzes remain hidden from the app until their day.
 - App snapshots cache today's quiz and up to 90 previous quizzes. New answers need a network connection so answer keys stay on the server. Retrying the same submitted choice is safe, including after midnight if the first submission succeeded.

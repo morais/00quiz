@@ -75,6 +75,7 @@ struct TodayView: View {
                             }.font(.headline).padding(.vertical, 8)
                         }
                         .buttonStyle(.borderedProminent).tint(QuizStyle.green)
+                        FriendQuizButton(quiz: quiz)
                         if !quiz.completed {
                             Text("No timer. Just curiosity. Finish all five to keep your streak.")
                                 .font(.footnote).foregroundStyle(.secondary)
@@ -171,6 +172,7 @@ struct QuizPlayView: View {
                             .multilineTextAlignment(.center).foregroundStyle(.secondary)
                         Label("\(store.snapshot?.streak.current ?? 0) day streak", systemImage: "flame.fill").font(.headline).foregroundStyle(QuizStyle.green)
                         Button("Back to today") { dismiss() }.buttonStyle(.borderedProminent)
+                        FriendQuizButton(quiz: quiz)
                     }.padding(32).frame(maxWidth: .infinity)
                 } else {
                     questionContent(quiz: quiz, question: quiz.questions[index])
@@ -196,69 +198,17 @@ struct QuizPlayView: View {
     }
 
     private func questionContent(quiz: DailyQuiz, question: QuizQuestion) -> some View {
-        VStack(alignment: .leading, spacing: 24) {
-            ProgressView(value: Double(index + 1), total: 5).tint(QuizStyle.green)
-            Text(question.topic.uppercased()).font(.caption.weight(.bold)).tracking(1.5).foregroundStyle(QuizStyle.green)
-            Text(question.prompt).font(.system(.title, design: .serif, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
-            VStack(spacing: 12) {
-                ForEach(Array(question.choices.enumerated()), id: \.offset) { choiceIndex, choice in
-                    let correct = question.correctIndex == choiceIndex
-                    let chosen = question.answer?.choiceIndex == choiceIndex
-                    Button { selected = choiceIndex } label: {
-                        HStack(alignment: .firstTextBaseline, spacing: 14) {
-                            Text(String(UnicodeScalar(65 + choiceIndex)!)).font(.subheadline.bold())
-                                .frame(width: 30, height: 30).background(QuizStyle.green.opacity(0.08), in: Circle())
-                            Text(choice).multilineTextAlignment(.leading).frame(maxWidth: .infinity, alignment: .leading)
-                            if correct { Image(systemName: "checkmark.circle.fill").accessibilityLabel("Correct answer") }
-                            else if chosen { Image(systemName: "xmark.circle").accessibilityLabel("Your answer, incorrect") }
-                            else if selected == choiceIndex && question.answer == nil { Image(systemName: "circle.inset.filled").accessibilityLabel("Selected") }
-                        }
-                        .foregroundStyle(correct ? QuizStyle.green : Color.primary)
-                        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(correct ? QuizStyle.green.opacity(0.12) : Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
-                        .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(selected == choiceIndex && question.answer == nil ? QuizStyle.green : Color.clear, lineWidth: 2) }
-                    }
-                    .buttonStyle(QuizChoiceStyle()).disabled(question.answer != nil || question.correctIndex != nil || store.busy || quiz.day != store.localDay)
-                }
-            }
-            if let explanation = question.explanation {
-                VStack(alignment: .leading, spacing: 10) {
-                    Label(question.answer.map { $0.correct ? "You got it!" : "A little discovery" } ?? "The answer", systemImage: question.answer?.correct == true ? "checkmark.seal.fill" : "lightbulb.fill")
-                        .font(.headline).foregroundStyle(QuizStyle.green)
-                    Text(.init(explanation)).lineSpacing(3)
-                    if let source = question.sourceURL, let url = URL(string: source), url.scheme == "https" {
-                        Link(destination: url) { Label("Explore the source", systemImage: "arrow.up.right") }.font(.footnote)
-                    }
-                }
-                .padding(20).frame(maxWidth: .infinity, alignment: .leading)
-                .background(QuizStyle.yellow.opacity(0.18), in: RoundedRectangle(cornerRadius: 20))
-                Button(index == 4 ? (quiz.completed ? "See your score" : "Finish review") : "Next question") {
-                    if index == 4 { if quiz.completed { results = true } else { dismiss() } }
-                    else { index += 1; selected = nil }
-                }
-                .buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
-            } else {
-                Button {
-                    guard let selected else { return }
-                    Task {
-                        do { try await store.answer(packID: packID, questionIndex: index, choiceIndex: selected) }
-                        catch { errorText = "\(error.localizedDescription) If no explanation appears, retry to confirm your selected choice." }
-                    }
-                } label: {
-                    HStack { Spacer(); if store.busy { ProgressView().tint(.white) }; Text("Lock in my answer"); Spacer() }
-                }
-                .buttonStyle(.borderedProminent).controlSize(.large).disabled(selected == nil || store.busy || quiz.day != store.localDay)
-                Text("One choice, then a little more knowledge.").font(.footnote).foregroundStyle(.secondary)
+        QuizQuestionView(question: question, number: index + 1, selected: $selected,
+                         isBusy: store.busy, canAnswer: quiz.day == store.localDay,
+                         nextTitle: index == 4 ? (quiz.completed ? "See your score" : "Finish review") : "Next question") {
+            if index == 4 { if quiz.completed { results = true } else { dismiss() } }
+            else { index += 1; selected = nil }
+        } onAnswer: { choice in
+            Task {
+                do { try await store.answer(packID: packID, questionIndex: index, choiceIndex: choice) }
+                catch { errorText = "\(error.localizedDescription) If no explanation appears, retry to confirm your selected choice." }
             }
         }
-        .padding(24).frame(maxWidth: 620).frame(maxWidth: .infinity)
-        .animation(.easeInOut(duration: 0.2), value: question.answer != nil)
-    }
-}
-
-private struct QuizChoiceStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label.opacity(configuration.isPressed ? 0.75 : 1)
     }
 }
 
