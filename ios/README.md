@@ -1,0 +1,25 @@
+# 00Quiz for iPhone
+
+SwiftUI, iOS 27+. Xcode and XcodeGen are required. Copy `project.yml.sample` to ignored `project.yml`, supply your Apple team, bundle ID and API origin, then run `xcodegen generate`.
+
+For a simulator build:
+
+```sh
+xcodebuild -project ZeroZeroQuiz.xcodeproj -scheme ZeroZeroQuiz \
+  -configuration Debug -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO build
+```
+
+The sign-in page's **Try with demo data** opens a clearly labelled local sample quiz. Debug builds also accept `--demo` as a launch argument. Demo answers never contact the backend or update a real account. Preferences start empty in both demo and real accounts, so the agent chooses unless the user supplies them.
+
+The approved option 2 artwork lives in `docs/brand/sources/00quiz-app-icon-master.png`. Run `python3 ios/scripts/generate-brand.py` from the repository root (requires Pillow) to resize it into opaque App Store/iPhone icons and the shared in-app mark. The script validates the source and preserves the artwork; it does not redraw it.
+
+## TestFlight
+
+Register the App ID with Sign in with Apple, create its App Store Connect record, and create an App Store distribution profile containing the capability. The official Release configuration uses manual signing and a dedicated distribution profile. Set `CURRENT_PROJECT_VERSION` to a fresh Lisbon timestamp (`TZ=Europe/Lisbon date +%Y%m%d%H%M`) before each archive.
+
+Archive with `xcodebuild -project ZeroZeroQuiz.xcodeproj -scheme ZeroZeroQuiz -configuration Release -destination 'generic/platform=iOS' -archivePath build/00Quiz.xcarchive archive`. Export using an ignored export-options plist specifying App Store Connect distribution, your team, manual signing and the bundle-to-profile mapping, then upload with Xcode's `altool` and the existing App Store Connect API key.
+
+After Apple processing, `scripts/assign-testflight.py --app-id APP_ID --group-id GROUP_ID --build BUILD_NUMBER` assigns the build to the internal group and verifies it. Set `ASC_KEY_PATH` explicitly if `~/.appstoreconnect/private_keys` holds multiple keys. `scripts/apple-api.py` provides a credential-safe helper for administrative API calls. `ios/.apple-deploy.json` contains ignored local deployment identifiers and key paths, never secret contents.
+
+The app supports portrait and landscape, Dynamic Type, system dark mode and accessible labels for correct/incorrect answers. Read cached data offline; submitting an answer requires a connection. Sessions use Keychain with a device-only accessibility class. Cache files are per account and protected, and are removed on sign-out/deletion/session expiry. Only 90 previous quizzes are loaded into the app; streak totals cover the complete retained account history.

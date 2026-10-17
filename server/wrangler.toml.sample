@@ -1,0 +1,54 @@
+name = "00quiz-api"
+main = "src/index.ts"
+compatibility_date = "2026-10-17"
+workers_dev = false
+preview_urls = false
+
+[vars]
+APP_NAME = "My Quiz"
+PUBLIC_ORIGIN = "https://api.example.com"
+APPLE_APP_CLIENT_ID = "com.example.zerozeroquiz"
+APPLE_WEB_CLIENT_ID = "com.example.zerozeroquiz.web"
+APPLE_WEB_REDIRECT_URI = "https://api.example.com/auth/apple/callback"
+APPLE_TEAM_ID = "REPLACE_WITH_APPLE_TEAM_ID"
+APPLE_KEY_ID = "REPLACE_WITH_SIGN_IN_WITH_APPLE_KEY_ID"
+# APPLE_PRIVATE_KEY and OAUTH_SIGNING_SECRET are Wrangler secrets.
+# Optional exact OAuth redirect URL -> server-owned client display name map:
+# MCP_VERIFIED_CLIENTS = '{"https://client.example/callback":"My Agent"}'
+# The saved account IANA time zone controls calendar days; there is no global
+# quiz-date override and callers cannot submit a fictitious current date.
+
+[[routes]]
+pattern = "api.example.com"
+custom_domain = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "00quiz"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+# Choose namespace IDs unique within your Cloudflare account.
+[[ratelimits]]
+name = "SOURCE_LIMITER"
+namespace_id = "23001"
+  [ratelimits.simple]
+  limit = 600
+  period = 60
+
+[[ratelimits]]
+name = "SIGN_IN_LIMITER"
+namespace_id = "23002"
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
+[[ratelimits]]
+name = "TENANT_LIMITER"
+namespace_id = "23003"
+  [ratelimits.simple]
+  limit = 300
+  period = 60
+
+[observability]
+enabled = true

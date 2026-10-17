@@ -1,0 +1,44 @@
+# 00Quiz Worker
+
+TypeScript Worker + D1, based on 00Todo's Apple/OAuth implementation. Install with `npm ci`; run `npm run typecheck` and `npm test`. Tests use SQLite with foreign keys and all real migrations, plus focused Apple and OAuth tests.
+
+Copy `wrangler.toml.sample` to ignored `wrangler.toml`. Set your public origin, native App ID, web Services ID, Apple team/key identifiers, route and D1 database. Enable Sign in with Apple on the native App ID; associate the Services ID and private key with it. Register `https://<api-host>/auth/apple/callback` for web sign-in. Create D1 with `npx wrangler d1 create <name>` and apply `npx wrangler d1 migrations apply <name> --remote`.
+
+Install `APPLE_PRIVATE_KEY` and a random 32+ character `OAUTH_SIGNING_SECRET` with Wrangler secrets. An App Store Connect API key is separate from the Sign in with Apple key. Verify `npx wrangler whoami` before deploying with `npm run deploy`. Optional `MCP_VERIFIED_CLIENTS` maps exact client callback URLs to trusted display names on the consent page. Unknown clients remain usable and are labelled unverified.
+
+## REST
+
+`GET /agent-instructions` serves public, account-independent quiz-host guidance as `{version, format, instructions}`. The version is derived from the full document content. GET/HEAD support `ETag` and `If-None-Match`, including weak validators, with `304 Not Modified` when current. Reads do not query D1. Edit `src/agentInstructions.ts` and deploy to update guidance; no app update, manual revision bump or copied-prompt change is needed.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/v1/auth/apple` | Native Apple identity token/code/nonce exchange; optional initial IANA `timeZone` |
+| POST | `/v1/auth/logout` | Revoke the current app credential |
+| POST | `/v1/auth/delete-account` | Fresh matching Apple sign-in, token revocation, cascading data deletion |
+| GET | `/v1/snapshot` | Today's redacted quiz, preferences, streaks and 90 previous quizzes |
+| PATCH | `/v1/preferences` | Optional interests/language/difficulty/timeZone; omitted fields preserved |
+| POST | `/v1/quizzes/:id/answers` | `{questionIndex: 0..4, choiceIndex: 0..3}`; returns updated snapshot |
+| GET | `/v1/account/mcp-connections` | List active agent grants |
+| DELETE | `/v1/account/mcp-connections/:id` | Revoke one agent grant |
+
+App credentials cannot access MCP. MCP credentials cannot access REST or submit answers. Every query is tenant-scoped. Composite foreign keys also prevent cross-account answer insertion. Published packs and answers use unique constraints for concurrent/retried writes. Answer keys never reach the phone before an attempt, except for past-day review. Quizzes are closed according to the server's clock and saved IANA time zone; callers cannot pass a fictitious current date.
+
+## MCP
+
+Streamable HTTP JSON-RPC at `/mcp`, OAuth authorization code with S256 PKCE and resource-bound scopes `quiz:read` / `quiz:write`. Discovery is at `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`.
+
+| Tool | Scope | Purpose |
+| --- | --- | --- |
+| `get_quiz_instructions` | read | Current versioned guidance; optional `knownVersion` returns `{version, changed: false}` if current, or the full document with `changed: true` |
+| `get_quiz_context` | read | Preferences, local day, current quiz, streaks, topic totals over up to 90 recent quizzes, latest 7 history items, upcoming days and `agentInstructions` version/URL/tool metadata |
+| `get_quiz_history` | read | Up to 90 history items with actual choices, results and explanations |
+| `update_quiz_preferences` | write | Set defaults or apply user-requested changes |
+| `publish_daily_quiz` | write | Publish one immutable five-question pack and its host message |
+
+Pack input is `{day, title, hostMessage, questions}`. Each question has `{prompt, topic, choices, correctIndex, explanation, sourceURL?}`. There must be exactly five distinct prompts, four distinct choices each, and one correct index 0–3. Sources, when supplied, must use HTTPS. The server validates shape; the publishing agent is responsible for factual verification and the user's content preferences.
+
+No server-side cron generates questions. The user schedules tool calls in their agent. No third-party AI key is required by the service.
+
+Each run should read context and compare `agentInstructions.version` with the guidance it last read. Refresh through `get_quiz_instructions` only when new, or every run if the agent cannot persist its guidance. Version metadata rides on the existing context call; there is no extra change-polling request, subscription or persistent connection. Old prompts that already call context also receive the new version and pointer to current guidance.
+
+`scripts/smoke-production.mjs` checks the official deployment using a short-lived synthetic account, including publish/retry, scoring, streaks, feedback, credential separation and the OAuth redirect to Apple. It requires authenticated Wrangler, prints no raw credentials, and removes its own account in a finally block. It does not test an actual human's Apple consent round trip.

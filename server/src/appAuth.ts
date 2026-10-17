@@ -1,0 +1,70 @@
+import { z } from "zod";
+import { appleEmail, revokeAppleToken, verifyNativeAppleLogin } from "./apple";
+import { constantTimeEqual, findOrCreateTenant, issueCredential, revokeCredential, tenantForPrincipal, type Principal } from "./auth";
+import { json, type Env } from "./api";
+import { PreferencesPatch } from "./model";
+
+const LoginInput = z.strictObject({
+  identityToken: z.string().min(100).max(12000),
+  authorizationCode: z.string().min(1).max(2048),
+  nonce: z.string().min(16).max(256),
+  timeZone: PreferencesPatch.shape.timeZone,
+});
+
+export async function signInWithApple(req: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
+  if (!env.APPLE_APP_CLIENT_ID || !env.APPLE_PRIVATE_KEY) return json({ error: "Apple sign-in is not configured" }, 503);
+  if (Number(req.headers.get("content-length") ?? 0) > 16000) return json({ error: "Request too large" }, 413);
+  const raw = await req.text();
+  if (raw.length > 16000) return json({ error: "Request too large" }, 413);
+  let input: z.infer<typeof LoginInput>;
+  try { input = LoginInput.parse(JSON.parse(raw)); }
+  catch { return json({ error: "Invalid Apple sign-in request" }, 400); }
+  try {
+    const { claims } = await verifyNativeAppleLogin(env, input.identityToken, input.authorizationCode, input.nonce);
+    const tenant = await findOrCreateTenant(env, claims.sub, appleEmail(claims), { source: "app", ctx });
+    await env.DB.prepare("INSERT OR IGNORE INTO preferences (tenant_id, time_zone, updated_at) VALUES (?, ?, ?)")
+      .bind(tenant.id, input.timeZone ?? "UTC", new Date().toISOString()).run();
+    const credential = await issueCredential(env, tenant.id, "app", "iOS app");
+    return json({ token: credential.token, expiresAt: credential.expiresAt,
+      tenant: { id: tenant.id, email: tenant.email } }, 201);
+  } catch (cause) {
+    console.warn("Apple app sign-in failed", cause instanceof Error ? cause.message : "unknown error");
+    return json({ error: "Apple sign-in could not be verified" }, 401);
+  }
+}
+
+export async function signOut(env: Env, principal: Principal): Promise<Response> {
+  await revokeCredential(env, principal);
+  return json({ ok: true });
+}
+
+export async function deleteAccount(req: Request, env: Env, principal: Principal): Promise<Response> {
+  let input: z.infer<typeof LoginInput>;
+  try {
+    if (Number(req.headers.get("content-length") ?? 0) > 16000) return json({ error: "Request too large" }, 413);
+    const raw = await req.text();
+    if (raw.length > 16000) return json({ error: "Request too large" }, 413);
+    input = LoginInput.parse(JSON.parse(raw));
+  } catch { return json({ error: "A fresh Apple sign-in is required" }, 400); }
+  const tenant = await tenantForPrincipal(env, principal);
+  if (!tenant?.apple_subject) return json({ error: "Account not found" }, 404);
+  let accessToken: string;
+  try {
+    const verified = await verifyNativeAppleLogin(env, input.identityToken, input.authorizationCode, input.nonce);
+    if (!constantTimeEqual(verified.claims.sub, tenant.apple_subject)) return json({ error: "This is a different Apple account" }, 403);
+    accessToken = verified.accessToken;
+    await revokeAppleToken(env, env.APPLE_APP_CLIENT_ID!, accessToken);
+  } catch (cause) {
+    console.warn("Apple account deletion re-authentication failed", cause instanceof Error ? cause.message : "unknown error");
+    return json({ error: "Could not verify and revoke Apple sign-in. Please try again." }, 502);
+  }
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM quiz_packs WHERE tenant_id = ?").bind(tenant.id),
+    env.DB.prepare("DELETE FROM preferences WHERE tenant_id = ?").bind(tenant.id),
+    env.DB.prepare("DELETE FROM oauth_flows WHERE tenant_id = ?").bind(tenant.id),
+    env.DB.prepare("DELETE FROM oauth_codes WHERE tenant_id = ?").bind(tenant.id),
+    env.DB.prepare("DELETE FROM credentials WHERE tenant_id = ?").bind(tenant.id),
+    env.DB.prepare("DELETE FROM tenants WHERE id = ? AND apple_subject = ?").bind(tenant.id, tenant.apple_subject),
+  ]);
+  return json({ ok: true });
+}
