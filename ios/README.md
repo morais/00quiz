@@ -14,6 +14,8 @@ The sign-in page's **Try with demo data** opens a clearly labelled local sample 
 
 After completing all five questions, **Let a friend try** opens a fresh in-memory attempt at the same quiz. The normal question view reveals feedback only after each guest answer. The end screen compares both scores and question results. Guest answers are discarded on closing; they never enter the account store, backend, history, streak or agent performance data.
 
+After an answer is saved, both normal and friend rounds scroll to the bottom so the explanation and next button are visible. Advancing to another question or the results returns to the top. Automatic scrolling respects Reduce Motion.
+
 Run the guest-session checks from the repository root:
 
 ```sh

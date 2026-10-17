@@ -8,7 +8,7 @@ Install `APPLE_PRIVATE_KEY` and a random 32+ character `OAUTH_SIGNING_SECRET` wi
 
 ## REST
 
-`GET /agent-instructions` serves public, account-independent quiz-host guidance as `{version, format, instructions}`. The version is derived from the full document content. GET/HEAD support `ETag` and `If-None-Match`, including weak validators, with `304 Not Modified` when current. Reads do not query D1. Edit `src/agentInstructions.ts` and deploy to update guidance; no app update, manual revision bump or copied-prompt change is needed.
+`GET /agent-instructions` serves public, account-independent quiz-host guidance as `{version, format, instructions}`. The version is derived from the full document content. GET/HEAD support `ETag` and `If-None-Match`, including weak validators, with `304 Not Modified` when current. Reads do not query D1. The guidance includes general-audience content limits for questions, choices, feedback, host messages and sources; user preferences do not override them. These are publishing instructions for the external agent, not an automated server-side content classifier. Edit `src/agentInstructions.ts` and deploy to update guidance; no app update, manual revision bump or copied-prompt change is needed.
 
 | Method | Path | Purpose |
 | --- | --- | --- |

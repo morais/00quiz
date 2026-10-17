@@ -16,6 +16,8 @@ The sample account exercises the deployed backend. It has five questions for the
 6. **Settings → Restart sample quiz** clears only this synthetic account’s answers for today so the flow can be tested again.
 7. **Settings → Your agent** contains the MCP address and setup instructions, a connection list and revocation controls. An agent with remote MCP/OAuth can connect to `https://api.00quiz.com/mcp`. Select reviewer access in its authorization flow and use the same review code, then approve the normal quiz scopes. Question packs are immutable; a tool test may publish tomorrow through seven days ahead. Future quizzes appear in the app only on their real local day.
 
+The hosted instructions require general-audience questions, choices, explanations, host messages and linked sources. Agents must avoid adult, graphic, frightening, hateful and other unsuitable material, gambling or prizes, substance topics and medical treatment advice; user interests do not override these limits. The app has no built-in AI or automated server-side content classifier.
+
 Generating quizzes automatically requires scheduling in the user’s separate agent. A local reminder is only a reminder and does not generate questions. There is no in-app chat, public feed, social account discovery, gambling, prize or paid contest.
 
 ## Personal Apple accounts

@@ -152,19 +152,19 @@ private struct HostMessageCard: View {
 struct QuizPlayView: View {
     @Environment(QuizStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let packID: String
     @State private var index = 0
     @State private var selected: Int?
     @State private var errorText: String?
     @State private var results = false
+    @State private var scrollPosition = ScrollPosition(edge: .top)
     private var quiz: DailyQuiz? {
         if store.snapshot?.quiz?.id == packID { return store.snapshot?.quiz }
         return store.snapshot?.history.first { $0.id == packID }
     }
     var body: some View {
-        ScrollViewReader { proxy in
-          ScrollView {
-            Color.clear.frame(height: 0).id("quiz-top")
+        ScrollView {
             if let quiz, quiz.questions.indices.contains(index) {
                 if results {
                     VStack(spacing: 24) {
@@ -183,9 +183,15 @@ struct QuizPlayView: View {
             } else {
                 ContentUnavailableView("Quiz unavailable", systemImage: "questionmark.circle", description: Text("Close this screen and refresh to get the latest quiz."))
             }
-          }
-          .onChange(of: index) { _, _ in proxy.scrollTo("quiz-top", anchor: .top) }
-          .onChange(of: results) { _, _ in proxy.scrollTo("quiz-top", anchor: .top) }
+        }
+        .scrollPosition($scrollPosition)
+        .onChange(of: index) { _, _ in scrollPosition.scrollTo(edge: .top) }
+        .onChange(of: results) { _, _ in scrollPosition.scrollTo(edge: .top) }
+        .onChange(of: quiz?.answeredCount) { previous, current in
+            guard let previous, let current, current > previous, !results else { return }
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) {
+                scrollPosition.scrollTo(edge: .bottom)
+            }
         }
         .background(QuizStyle.paper)
         .navigationTitle(results ? "Nicely played" : "Question \(index + 1) of 5")

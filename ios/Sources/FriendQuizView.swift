@@ -20,46 +20,52 @@ struct FriendQuizButton: View {
 
 struct FriendQuizView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var session: FriendQuizSession
     @State private var started = false
     @State private var index = 0
     @State private var selected: Int?
     @State private var results = false
+    @State private var scrollPosition = ScrollPosition(edge: .top)
 
     init(session: FriendQuizSession) { _session = State(initialValue: session) }
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                Color.clear.frame(height: 0).id("friend-top")
-                if results && session.completed {
-                    FriendQuizResultsView(session: session)
-                    Button("Done") { dismiss() }.buttonStyle(.borderedProminent).controlSize(.large).padding(.bottom, 32)
-                } else if !started {
-                    VStack(spacing: 24) {
-                        Image(systemName: "person.2.fill").font(.system(size: 56)).foregroundStyle(QuizStyle.green)
-                        Text("Your turn in the spotlight.")
-                            .font(.system(.largeTitle, design: .serif, weight: .bold))
-                        Text(session.ownerQuiz.title).font(.title3.weight(.semibold))
-                        Text("Five questions, one fresh attempt. Take a turn, then hand the phone back to compare scores.")
-                            .foregroundStyle(.secondary)
-                        Text("Just for fun. This round isn’t saved.").font(.footnote).foregroundStyle(.secondary)
-                        Button("I’m ready") { started = true }.buttonStyle(.borderedProminent).controlSize(.large)
-                    }
-                    .multilineTextAlignment(.center).padding(32).frame(maxWidth: 620).frame(maxWidth: .infinity)
-                } else {
-                    QuizQuestionView(question: session.quiz.questions[index], number: index + 1,
-                                     selected: $selected, nextTitle: index == 4 ? "Compare scores" : "Next question") {
-                        if index == 4 { results = true }
-                        else { index += 1; selected = nil }
-                    } onAnswer: { choice in
-                        session.answer(questionIndex: session.ownerQuiz.questions[index].index, choiceIndex: choice)
-                    }
+        ScrollView {
+            if results && session.completed {
+                FriendQuizResultsView(session: session)
+                Button("Done") { dismiss() }.buttonStyle(.borderedProminent).controlSize(.large).padding(.bottom, 32)
+            } else if !started {
+                VStack(spacing: 24) {
+                    Image(systemName: "person.2.fill").font(.system(size: 56)).foregroundStyle(QuizStyle.green)
+                    Text("Your turn in the spotlight.")
+                        .font(.system(.largeTitle, design: .serif, weight: .bold))
+                    Text(session.ownerQuiz.title).font(.title3.weight(.semibold))
+                    Text("Five questions, one fresh attempt. Take a turn, then hand the phone back to compare scores.")
+                        .foregroundStyle(.secondary)
+                    Text("Just for fun. This round isn’t saved.").font(.footnote).foregroundStyle(.secondary)
+                    Button("I’m ready") { started = true }.buttonStyle(.borderedProminent).controlSize(.large)
+                }
+                .multilineTextAlignment(.center).padding(32).frame(maxWidth: 620).frame(maxWidth: .infinity)
+            } else {
+                QuizQuestionView(question: session.quiz.questions[index], number: index + 1,
+                                 selected: $selected, nextTitle: index == 4 ? "Compare scores" : "Next question") {
+                    if index == 4 { results = true }
+                    else { index += 1; selected = nil }
+                } onAnswer: { choice in
+                    session.answer(questionIndex: session.ownerQuiz.questions[index].index, choiceIndex: choice)
                 }
             }
-            .onChange(of: index) { _, _ in proxy.scrollTo("friend-top", anchor: .top) }
-            .onChange(of: results) { _, _ in proxy.scrollTo("friend-top", anchor: .top) }
-            .onChange(of: started) { _, _ in proxy.scrollTo("friend-top", anchor: .top) }
+        }
+        .scrollPosition($scrollPosition)
+        .onChange(of: index) { _, _ in scrollPosition.scrollTo(edge: .top) }
+        .onChange(of: results) { _, _ in scrollPosition.scrollTo(edge: .top) }
+        .onChange(of: started) { _, _ in scrollPosition.scrollTo(edge: .top) }
+        .onChange(of: session.choices.count) { previous, current in
+            guard current > previous, !results else { return }
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) {
+                scrollPosition.scrollTo(edge: .bottom)
+            }
         }
         .background(QuizStyle.paper)
         .navigationTitle(results ? "The friendly showdown" : started ? "Friend · \(index + 1) of 5" : "Let a friend try")
