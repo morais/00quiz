@@ -88,8 +88,13 @@ describe("daily quiz integrity", () => {
   it("publishes schemas through MCP and reports semantic errors as tool errors", async () => {
     const { env } = setup();
     const listing = await routeMcp(new Request("https://api.00quiz.com/mcp", { method: "POST", body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" }) }), env, principal);
-    const data = await listing.json() as { result: { tools: unknown[] } };
+    const data = await listing.json() as { result: { tools: { name: string; title: string; annotations: Record<string, unknown> }[] } };
     expect(data.result.tools).toHaveLength(5);
+    const hints = Object.fromEntries(data.result.tools.map(t => [t.name, t.annotations]));
+    for (const t of data.result.tools) expect(t.annotations.title).toBe(t.title);
+    expect(hints.get_quiz_context).toMatchObject({ readOnlyHint: true, destructiveHint: false });
+    expect(hints.update_quiz_preferences).toMatchObject({ readOnlyHint: false, destructiveHint: true });
+    expect(hints.publish_daily_quiz).toMatchObject({ readOnlyHint: false, destructiveHint: false });
     const result = await routeMcp(rpc("publish_daily_quiz", pack("2020-01-01")), env, principal);
     expect(await result.json()).toMatchObject({ result: { isError: true } });
     expect((await agentContext(env, "one")).topics).toEqual({});

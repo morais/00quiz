@@ -10,13 +10,13 @@ const tools = [
     description: "Read the current quiz-host guidance. get_quiz_context advertises its version each run. Pass knownVersion to get a tiny changed:false response when your saved guidance is current; otherwise the full guidance and its version are returned.",
     schema: z.strictObject({ knownVersion: z.string().min(1).max(100).optional() }) },
   { name: "get_quiz_context", title: "Get Quiz Context", readOnly: true,
-    description: "Read optional preferences, user-local date, streaks, topic accuracy, recent answers, upcoming quiz days and the current instructions version. Call each run; read get_quiz_instructions if the version is new to you. Includes 7 history items; get_quiz_history can inspect up to 90.", schema: z.strictObject({}) },
+    description: "Read optional preferences, user-local date, streaks, topic accuracy, recent answers, upcoming quiz days and the current quiz-host guidance version, which tells you whether guidance saved from get_quiz_instructions is current. Includes 7 history items; get_quiz_history can inspect up to 90.", schema: z.strictObject({}) },
   { name: "get_quiz_history", title: "Get Quiz History", readOnly: true,
     description: "Read previous quizzes, the user's actual choices, correct answers, explanations, and daily scores. Use to adapt difficulty and revisit missed concepts.", schema: z.strictObject({ limit: z.number().int().min(1).max(90).default(14) }) },
-  { name: "update_quiz_preferences", title: "Update Quiz Preferences", readOnly: false,
-    description: "Save optional interests, language, difficulty or IANA timeZone. Set defaults based on your conversation when unset. Respect existing preferences; only change user-set values when asked. Empty interests and null language/difficulty let you choose. Omitted fields stay unchanged.", schema: PreferencesPatch },
+  { name: "update_quiz_preferences", title: "Update Quiz Preferences", readOnly: false, destructive: true,
+    description: "Save optional interests, language, difficulty or IANA timeZone, replacing the saved value of each field included. Set defaults based on your conversation when unset. Respect existing preferences; only change user-set values when asked. Empty interests and null language/difficulty let you choose. Omitted fields stay unchanged.", schema: PreferencesPatch },
   { name: "publish_daily_quiz", title: "Publish Daily Quiz", readOnly: false,
-    description: "Publish exactly five multiple-choice questions with four distinct choices each, correctIndex 0–3, and an explanation. Follow the general-audience content limits in get_quiz_instructions. day is YYYY-MM-DD in the user's time zone, today through 7 days ahead. The friendly hostMessage may discuss yesterday's actual performance and introduce today's topics. Verify facts; provide reliable HTTPS sourceURL values where useful. A day's published quiz is immutable; identical retries are idempotent. The app shows answers after each attempt. This does not schedule a recurring task: schedule the morning call in your own agent.", schema: PackInput },
+    description: "Publish exactly five multiple-choice questions with four distinct choices each, correctIndex 0–3, and an explanation. Follow the general-audience content limits in get_quiz_instructions. day is YYYY-MM-DD in the user's time zone, today through 7 days ahead. The friendly hostMessage may discuss yesterday's actual performance and introduce today's topics. Verify facts; provide reliable HTTPS sourceURL values where useful. A day's published quiz is immutable; identical retries are idempotent. The app shows answers after each attempt. Publishing does not schedule future quizzes.", schema: PackInput },
 ] as const;
 const versions = new Set(["2026-07-28", "2025-11-25", "2025-06-18", "2025-03-26"]);
 const rpc = (id: unknown, result: unknown) => json({ jsonrpc: "2.0", id, result });
@@ -44,7 +44,7 @@ export async function routeMcp(req: Request, env: Env, principal: Principal): Pr
   if (input.method === "tools/list") {
     listing ??= tools.map(t => ({ name: t.name, title: t.title, description: t.description,
       inputSchema: z.toJSONSchema(t.schema, { io: "input" }),
-      annotations: { readOnlyHint: t.readOnly, destructiveHint: false, idempotentHint: true, openWorldHint: false } }));
+      annotations: { title: t.title, readOnlyHint: t.readOnly, destructiveHint: "destructive" in t, idempotentHint: true, openWorldHint: false } }));
     return rpc(id, { tools: listing });
   }
   if (input.method !== "tools/call") return error(id, -32601, "Method not found");
