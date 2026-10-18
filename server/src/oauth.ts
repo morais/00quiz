@@ -5,6 +5,7 @@ import {
   type Scope,
 } from "./auth";
 import { appName, json, type Env } from "./api";
+import { ensureReviewFixture } from "./review";
 
 const scopes: Scope[] = ["quiz:read", "quiz:write"];
 const flowLifetimeMs = 10 * 60000;
@@ -295,7 +296,7 @@ export async function reviewCallback(req: Request, env: Env): Promise<Response> 
     return html(env, "<h1>Invalid or expired review access</h1>", 401);
   }
   const tenantId = await reviewTenantForAccessCode(env, accessCode);
-  if (!tenantId) {
+  if (!tenantId || !(await ensureReviewFixture(env, tenantId))) {
     return html(env, "<h1>Invalid or expired review access</h1>", 401);
   }
   const consentSecret = randomToken(24);
