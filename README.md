@@ -37,3 +37,7 @@ Source code is MIT licensed; see [LICENSE](LICENSE). The 00Quiz name and artwork
 ## App Store release preparation
 
 The listing, six native screenshots and review walkthrough are in [`docs/appstore`](docs/appstore/README.md). A separate simulator-only screenshot app uses production views with fictional fixtures. The release app also supports a clearly labelled, isolated reviewer account so App Review can exercise the live backend without a personal agent account. Credentials and signing/deployment state remain ignored.
+
+## OpenAI plugin preparation
+
+The portable upload source is in [`plugin`](plugin), with review status and recording steps in [`docs/plugin`](docs/plugin/README.md). It connects to the existing OAuth MCP server and reads hosted quiz instructions when their version changes. Run `python3 scripts/package-plugin.py` to build and inspect a public preparation ZIP, or add `--require-ready` to reject missing publication facts or a demo URL. The existing private development plugin remains separate.

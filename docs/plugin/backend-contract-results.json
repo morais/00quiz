@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-10-18T10:28:06.191Z",
+  "scope": "Live backend contract rehearsal against the separate synthetic OpenAI account. Natural-language/model routing and the saved portal version are not tested here.",
+  "status": "passed",
+  "evidence": [
+    "P1: current context, redaction, instructions version and compact unchanged check",
+    "P2: explicit optional preferences saved and returned",
+    "P3: completed sample history, actual choices and topic performance",
+    "P4: +1-day publication, five questions, identical retry and immutable-pack conflict",
+    "P5: +7-day publication, five questions, identical retry and immutable-pack conflict",
+    "Negative backend boundary: no answer-submission, account-deletion or server-scheduling tool",
+    "Read-only browser dashboard, future titles, no exposed credentials and credential separation"
+  ],
+  "modelReviewCases": "Not run in intended host",
+  "demoRecording": "Not recorded"
+}

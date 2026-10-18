@@ -8,9 +8,10 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-if (process.argv.slice(2).some(x => x !== "--local")) throw new Error("Usage: provision-review.mjs [--local]");
+if (process.argv.slice(2).some(x => x !== "--local" && x !== "--plugin")) throw new Error("Usage: provision-review.mjs [--local] [--plugin]");
 const local = process.argv.includes("--local");
-const path = join(root, local ? ".review-access.local.json" : ".review-access.json");
+const prefix = process.argv.includes("--plugin") ? ".plugin-review-access" : ".review-access";
+const path = join(root, prefix + (local ? ".local.json" : ".json"));
 const saved = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : {
   tenantId: randomUUID(), accessCode: `qq_review_${randomBytes(32).toString("base64url")}`,
   expiresAt: new Date(Date.now() + 365 * 86400000).toISOString(), provisioned: false,

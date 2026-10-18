@@ -3,13 +3,16 @@ import { routeMcp } from "./mcp";
 import { serveInstructions } from "./agentInstructions";
 import { ensureReviewFixture, resetReviewQuiz, signInForReview } from "./review";
 import { authenticate } from "./auth";
+import { dashboard, dashboardLogin, dashboardAppleLogin, dashboardAppleCallback,
+  dashboardReviewLogin, dashboardLogout, isDashboardAppleState } from "./dashboard";
+import { openAIAppsChallenge } from "./openAIAppsChallenge";
 import { deleteAccount, signInWithApple, signOut } from "./appAuth";
 import { disconnectMcpConnection, listMcpConnections } from "./mcpConnections";
 import { maybeSweep } from "./cleanup";
 import { signInAllowed, sourceAllowed, tenantAllowed, tooManyRequests } from "./rateLimit";
 import { appleCallback, authChallenge, authorizationServerMetadata, beginAuthorization,
   decideConsent, exchangeCode, protectedResourceMetadata, registerClient, showConsent,
-  showReviewLogin, reviewCallback } from "./oauth";
+  showReviewLogin, reviewCallback, readAppleCallbackForm } from "./oauth";
 
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -17,9 +20,10 @@ export default {
       const path = new URL(req.url).pathname, method = req.method;
       if (path === "/health" && method === "GET") return json({ ok: true, app: "00Quiz" });
       if (!(await sourceAllowed(env, req))) return tooManyRequests();
+      if (path === "/.well-known/openai-apps-challenge" && (method === "GET" || method === "HEAD")) return openAIAppsChallenge(req, env);
       if (path === "/agent-instructions" && (method === "GET" || method === "HEAD")) return serveInstructions(req);
       if (path === "/" || path === "/privacy") return new Response(page(path === "/privacy"), { headers: { "Content-Type": "text/html; charset=utf-8" } });
-      if (path.startsWith("/oauth/") || path.startsWith("/auth/") || path === "/v1/auth/apple" || path === "/v1/auth/review" || path === "/v1/auth/delete-account") {
+      if (path.startsWith("/oauth/") || path.startsWith("/auth/") || path === "/v1/auth/apple" || path === "/v1/auth/review" || path === "/v1/auth/delete-account" || path.startsWith("/dashboard/login/")) {
         if (!(await signInAllowed(env, req))) return tooManyRequests(); maybeSweep(env, ctx);
       }
       if ((path === "/.well-known/oauth-protected-resource" || path === "/.well-known/oauth-protected-resource/mcp") && method === "GET") return protectedResourceMetadata(env);
@@ -27,7 +31,16 @@ export default {
       if (path === "/oauth/register" && method === "POST") return registerClient(req, env);
       if (path === "/oauth/authorize" && method === "GET") return beginAuthorization(req, env);
       if (path === "/oauth/login" && method === "GET") return showReviewLogin(req, env);
-      if (path === "/auth/apple/callback" && method === "POST") return appleCallback(req, env, ctx);
+      if (path === "/auth/apple/callback" && method === "POST") {
+        let form: URLSearchParams;
+        try { form = await readAppleCallbackForm(req); } catch { return json({ error: "Invalid Apple response" }, 400); }
+        return isDashboardAppleState(form.get("state")) ? dashboardAppleCallback(req, env, form, ctx) : appleCallback(req, env, ctx, form);
+      }
+      if (path === "/dashboard" && method === "GET") return dashboard(req, env);
+      if (path === "/dashboard/login" && method === "GET") return dashboardLogin(req, env);
+      if (path === "/dashboard/login/apple" && method === "GET") return dashboardAppleLogin(env);
+      if (path === "/dashboard/login/review" && method === "POST") return dashboardReviewLogin(req, env);
+      if (path === "/dashboard/logout" && method === "POST") return dashboardLogout(req, env);
       if (path === "/auth/review/callback" && method === "POST") return reviewCallback(req, env);
       if (path === "/oauth/consent" && method === "GET") return showConsent(req, env);
       if (path === "/oauth/consent" && method === "POST") return decideConsent(req, env);

@@ -5,6 +5,10 @@ node_modules/
 server/.wrangler/
 server/.review-access.json
 server/.review-access.local.json
+server/.plugin-review-access*.json
+server/.plugin-review-access.md
+artifacts/plugin/
+artifacts/private/
 server/dist/
 server/wrangler.toml
 server/.dev.vars*

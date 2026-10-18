@@ -9,6 +9,7 @@ export interface Env {
   APPLE_APP_CLIENT_ID?: string; APPLE_WEB_CLIENT_ID?: string; APPLE_WEB_REDIRECT_URI?: string;
   APPLE_TEAM_ID?: string; APPLE_KEY_ID?: string; APPLE_PRIVATE_KEY?: string;
   OAUTH_SIGNING_SECRET?: string; MCP_VERIFIED_CLIENTS?: string; REVIEW_TENANT_IDS?: string;
+  OPENAI_APPS_CHALLENGE_TOKEN?: string;
   SOURCE_LIMITER?: RateLimit; SIGN_IN_LIMITER?: RateLimit; TENANT_LIMITER?: RateLimit;
   SIGNUP_ALERTS?: SendEmail; SIGNUP_ALERT_TO?: string; SIGNUP_ALERT_FROM?: string;
 }

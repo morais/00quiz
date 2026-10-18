@@ -315,10 +315,14 @@ function consentRedirect(env: Env, flowId: string, secret: string): Response {
   } });
 }
 
-export async function appleCallback(req: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
+export async function readAppleCallbackForm(req: Request): Promise<URLSearchParams> {
+  return new URLSearchParams(await textBody(req, 16000));
+}
+
+export async function appleCallback(req: Request, env: Env, ctx?: ExecutionContext, parsedForm?: URLSearchParams): Promise<Response> {
   if (!configured(env)) return html(env, "<h1>Apple sign-in is not configured</h1>", 503);
   let form: URLSearchParams;
-  try { form = new URLSearchParams(await textBody(req, 16000)); }
+  try { form = parsedForm ?? await readAppleCallbackForm(req); }
   catch { return html(env, "<h1>Invalid Apple response</h1>", 400); }
   const flowId = form.get("state") ?? "";
   const flow = await loadFlow(env, flowId);

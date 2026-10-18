@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "00quiz": {
+      "type": "streamable-http",
+      "url": "https://api.00quiz.com/mcp",
+      "extensions": {
+        "com.openai": {
+          "auth": {
+            "type": "oauth",
+            "client": {
+              "mode": "dcr"
+            },
+            "baseScopes": [
+              "quiz:read"
+            ],
+            "defaultScopes": [
+              "quiz:read",
+              "quiz:write"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
