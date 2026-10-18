@@ -49,6 +49,11 @@ enum AppBrand {
     static let name = "00Quiz"
     static let server = URL(string: Bundle.main.object(forInfoDictionaryKey: "QuizServerBaseURL") as? String ?? "https://api.00quiz.com")!
     static var endpoint: String { server.appending(path: "mcp").absoluteString }
+    /// Redirects on the website to Claude's prefilled add-connector screen, or to the
+    /// directory listing once published. It connects production only, so other servers hide it.
+    static var claudeConnectURL: URL? {
+        server.host() == "api.00quiz.com" ? URL(string: "https://00quiz.com/claude") : nil
+    }
 }
 
 func dayLabel(_ day: String) -> String {

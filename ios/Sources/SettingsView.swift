@@ -125,6 +125,11 @@ struct AgentSetupView: View {
                 Text("Use an agent that supports remote MCP with OAuth and scheduled tool calls. Connect it to 00Quiz, then give it the instructions below. Connecting and scheduling are separate steps.")
             }
             Section("1 · Connect") {
+                if let url = AppBrand.claudeConnectURL {
+                    Link(destination: url) { Label("Add to Claude", systemImage: "arrow.up.forward.app") }
+                    Text("Opens Claude with 00Quiz ready to add. Using another agent? Copy the address below.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Text(AppBrand.endpoint).font(.callout.monospaced()).textSelection(.enabled)
                 Button("Copy MCP address", systemImage: "doc.on.doc") { UIPasteboard.general.string = AppBrand.endpoint }
                 Text("Add this address in your agent’s MCP integrations. Sign in with the same Apple account you use here, then approve its quiz access.")
