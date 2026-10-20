@@ -6,6 +6,14 @@ enum QuizStyle {
     static let yellow = Color(red: 0.98, green: 0.77, blue: 0.28)
 }
 
+extension View {
+    // Apply inside a Button/Link label so the extra space is tappable too.
+    func quizTapTarget(alignment: Alignment = .center) -> some View {
+        frame(minWidth: 44, minHeight: 44, alignment: alignment)
+            .contentShape(Rectangle())
+    }
+}
+
 struct ContentView: View {
     @Environment(QuizStore.self) private var store
     @State private var settings = false
@@ -75,9 +83,9 @@ struct TodayView: View {
                             HStack {
                                 Text(quiz.completed ? "Revisit today’s questions" : quiz.answeredCount == 0 ? "Let’s play" : "Keep going")
                                 Spacer(); Image(systemName: "arrow.right")
-                            }.font(.headline).padding(.vertical, 8)
+                            }.font(.headline)
                         }
-                        .buttonStyle(.borderedProminent).tint(QuizStyle.green)
+                        .buttonStyle(.borderedProminent).controlSize(.large).tint(QuizStyle.green)
                         FriendQuizButton(quiz: quiz)
                         if !quiz.completed {
                             Text("No timer. Just curiosity. Finish all five to keep your streak.")
@@ -91,8 +99,11 @@ struct TodayView: View {
                     } description: {
                         Text("Connect your agent and ask it to prepare today’s quiz. It can learn your interests and bring you five fresh questions every morning.")
                     } actions: {
-                        Button("Connect your agent") { setup = true }.buttonStyle(.borderedProminent)
-                        Button("Check for today’s quiz") { Task { await store.refresh() } }
+                        Button("Connect your agent") { setup = true }
+                            .buttonStyle(.borderedProminent).controlSize(.large)
+                        Button { Task { await store.refresh() } } label: {
+                            Text("Check for today’s quiz").quizTapTarget()
+                        }
                     }
                     .background(.background, in: RoundedRectangle(cornerRadius: 24))
                 }
@@ -102,6 +113,7 @@ struct TodayView: View {
                 Button { setup = true } label: {
                     Label("Made for you, by your agent", systemImage: "link")
                         .font(.footnote.weight(.medium)).frame(maxWidth: .infinity)
+                        .quizTapTarget()
                 }
             }
             .padding(24).frame(maxWidth: 620).frame(maxWidth: .infinity)
@@ -174,7 +186,10 @@ struct QuizPlayView: View {
                         Text(quiz.score == 5 ? "A clean sweep! Keep that curiosity going." : "Every question is a chance to learn something. You showed up — that’s what builds a streak.")
                             .multilineTextAlignment(.center).foregroundStyle(.secondary)
                         Label("\(store.snapshot?.streak.current ?? 0) day streak", systemImage: "flame.fill").font(.headline).foregroundStyle(QuizStyle.green)
-                        Button("Back to today") { dismiss() }.buttonStyle(.borderedProminent)
+                        Button { dismiss() } label: {
+                            Text("Back to today").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent).controlSize(.large)
                         FriendQuizButton(quiz: quiz)
                     }.padding(32).frame(maxWidth: .infinity)
                 } else {

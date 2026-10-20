@@ -32,6 +32,7 @@ struct QuizQuestionView: View {
                         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
                         .background(correct ? QuizStyle.green.opacity(0.12) : Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
                         .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(selected == choiceIndex && question.answer == nil ? QuizStyle.green : Color.clear, lineWidth: 2) }
+                        .contentShape(RoundedRectangle(cornerRadius: 18))
                     }
                     .buttonStyle(QuizChoiceStyle()).disabled(question.answer != nil || question.correctIndex != nil || isBusy || !canAnswer)
                 }
@@ -42,13 +43,18 @@ struct QuizQuestionView: View {
                         .font(.headline).foregroundStyle(QuizStyle.green)
                     Text(.init(explanation)).lineSpacing(3)
                     if let source = question.sourceURL, let url = URL(string: source), url.scheme == "https" {
-                        Link(destination: url) { Label("Explore the source", systemImage: "arrow.up.right") }.font(.footnote)
+                        Link(destination: url) {
+                            Label("Explore the source", systemImage: "arrow.up.right")
+                                .font(.footnote).quizTapTarget(alignment: .leading)
+                        }
                     }
                 }
                 .padding(20).frame(maxWidth: .infinity, alignment: .leading)
                 .background(QuizStyle.yellow.opacity(0.18), in: RoundedRectangle(cornerRadius: 20))
-                Button(nextTitle, action: onNext)
-                    .buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
+                Button(action: onNext) {
+                    Text(nextTitle).frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent).controlSize(.large)
             } else {
                 Button {
                     guard let selected else { return }

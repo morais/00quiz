@@ -16,6 +16,8 @@ After completing all five questions, **Let a friend try** opens a fresh in-memor
 
 After an answer is saved, both normal and friend rounds scroll to the bottom so the explanation and next button are visible. Advancing to another question or the results returns to the top. Automatic scrolling respects Reduce Motion.
 
+Touch targets follow Apple’s 44 × 44 pt guidance. Primary and secondary quiz actions use large native controls; compact custom labels use `quizTapTarget()` inside the Button/Link label so their added space participates in hit testing. See [the touch-target audit](../docs/ios-touch-target-audit.md) for measurements and scope.
+
 Run the guest-session checks from the repository root:
 
 ```sh

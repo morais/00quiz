@@ -8,6 +8,7 @@ struct SignInView: View {
     @State private var busy = false
     @State private var errorText: String?
     @State private var reviewCode = ""
+    @FocusState private var reviewCodeFocused: Bool
 
     var body: some View {
         // A scroll view that is at least screen-height keeps the centred
@@ -75,32 +76,45 @@ struct SignInView: View {
             .disabled(busy)
             if busy { ProgressView("Signing in…") }
             Button("Try with demo data") { store.startDemo() }
-                .buttonStyle(.bordered)
+                .buttonStyle(.bordered).controlSize(.large)
                 .disabled(busy)
             Text("Your Apple account keeps your quizzes separate. Your email is optional and is never used as your account ID.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            DisclosureGroup("Reviewer access") {
+            DisclosureGroup {
                 VStack(spacing: 12) {
                     SecureField("Review access code", text: $reviewCode)
+                        .focused($reviewCodeFocused)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                         .textFieldStyle(.roundedBorder)
-                    Button("Open sample account") {
+                        .quizTapTarget()
+                        .onTapGesture { reviewCodeFocused = true }
+                    Button {
                         busy = true
                         Task {
                             defer { busy = false; reviewCode = "" }
                             do { try await store.signInForReview(accessCode: reviewCode.trimmingCharacters(in: .whitespacesAndNewlines)) }
                             catch { errorText = error.localizedDescription }
                         }
-                    }.disabled(reviewCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || busy)
+                    } label: {
+                        Text("Open sample account").quizTapTarget()
+                    }
+                    .disabled(reviewCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || busy)
                     Text("For the dedicated sample account provided to reviewers.").font(.caption).foregroundStyle(.secondary)
                 }.padding(.top, 8)
-            }.font(.footnote).disabled(busy)
+            } label: {
+                Text("Reviewer access").quizTapTarget(alignment: .leading)
+            }
+            .font(.footnote).disabled(busy)
             HStack {
-                Link("Privacy", destination: URL(string: "https://00quiz.com/privacy")!)
+                Link(destination: URL(string: "https://00quiz.com/privacy")!) {
+                    Text("Privacy").quizTapTarget()
+                }
                 Text("·").foregroundStyle(.secondary)
-                Link("Support", destination: URL(string: "https://00quiz.com/support")!)
+                Link(destination: URL(string: "https://00quiz.com/support")!) {
+                    Text("Support").quizTapTarget()
+                }
             }.font(.footnote)
         }
         .padding(28)

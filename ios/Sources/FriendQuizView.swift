@@ -8,9 +8,9 @@ struct FriendQuizButton: View {
         if quiz.canPlayWithFriend {
             Button { session = FriendQuizSession(quiz: quiz) } label: {
                 Label("Let a friend try", systemImage: "person.2.fill")
-                    .frame(maxWidth: .infinity).padding(.vertical, 4)
+                    .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered).tint(QuizStyle.green)
+            .buttonStyle(.bordered).controlSize(.large).tint(QuizStyle.green)
             .sheet(item: $session) { session in
                 NavigationStack { FriendQuizView(session: session) }
             }

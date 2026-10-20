@@ -151,7 +151,9 @@ struct AgentSetupView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(connection.clientName).font(.headline)
                         Text("Expires \(dayLabel(String(connection.expiresAt.prefix(10))))").font(.caption).foregroundStyle(.secondary)
-                        Button("Disconnect", role: .destructive) { removing = connection }
+                        Button(role: .destructive) { removing = connection } label: {
+                            Text("Disconnect").quizTapTarget(alignment: .leading)
+                        }
                     }.padding(.vertical, 5)
                 }
                 Button("Refresh connections") { Task { await load() } }
