@@ -121,6 +121,24 @@ private struct ServerFailure: Decodable { let error: String }
         await refresh()
     }
 
+    func saveFeedback(packID: String, message: String) async throws {
+        let feedback: QuizFeedback?
+        if isDemo {
+            feedback = message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil
+                : QuizFeedback(message: message.trimmingCharacters(in: .whitespacesAndNewlines),
+                               updatedAt: ISO8601DateFormatter().string(from: .now))
+        } else {
+            struct Response: Decodable { let feedback: QuizFeedback? }
+            let saved: Response = try await request("v1/quizzes/\(packID)/feedback", method: "PUT", payload: ["message": message])
+            feedback = saved.feedback
+        }
+        if snapshot?.quiz?.id == packID { snapshot?.quiz?.feedback = feedback }
+        if let index = snapshot?.history.firstIndex(where: { $0.id == packID }) {
+            snapshot?.history[index].feedback = feedback
+        }
+        notice = nil; persist()
+    }
+
     func loadConnections() async throws {
         if isDemo { connections = []; return }
         struct Response: Decodable { let connections: [MCPConnection] }

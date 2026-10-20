@@ -13,6 +13,8 @@ export const PreferencesPatch = z.strictObject({
     try { new Intl.DateTimeFormat("en", { timeZone: zone }); return true; } catch { return false; }
   }, "Use an IANA time zone").optional(),
 });
+// Empty feedback removes an existing note; only the native account can write it.
+export const FeedbackInput = z.strictObject({ message: z.string().trim().max(1000) });
 export const Question = z.strictObject({
   prompt: text(1200), topic: text(80),
   choices: z.array(text(400)).length(4).refine(values => new Set(values.map(v => v.toLocaleLowerCase())).size === 4,

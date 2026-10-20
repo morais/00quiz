@@ -212,7 +212,7 @@ export async function dashboardReviewLogin(req: Request, env: Env): Promise<Resp
 function quizHtml(quiz: Awaited<ReturnType<typeof snapshot>>["history"][number]): string {
   return `<section><h2>${escapeHtml(quiz.day)} · ${escapeHtml(quiz.title)}</h2>
     <p>${quiz.completed ? `${quiz.score}/5 correct · completed` : `${quiz.questions.filter(q => q.answer).length}/5 answered`}</p>
-    <p class="host">${escapeHtml(quiz.hostMessage)}</p>${quiz.questions.map(q => {
+    <p class="host">${escapeHtml(quiz.hostMessage)}</p>${quiz.feedback ? `<div class="feedback"><strong>Your feedback for future quizzes</strong><p class="host">${escapeHtml(quiz.feedback.message)}</p></div>` : ""}${quiz.questions.map(q => {
       const feedback = q.explanation === null ? "" : `<div class="feedback"><p><strong>${q.answer ? q.answer.correct ? "Correct" : "A little discovery" : "The answer"}</strong>${q.correctIndex === null ? "" : ` · ${String.fromCharCode(65 + q.correctIndex)}`}</p><p class="explanation">${escapeHtml(q.explanation)}</p>${q.sourceURL && /^https:\/\//.test(q.sourceURL) ? `<a href="${escapeHtml(q.sourceURL)}" rel="noreferrer noopener">Explore the source</a>` : ""}</div>`;
       return `<article><p class="muted">${q.index + 1}. ${escapeHtml(q.topic)}</p><h3>${escapeHtml(q.prompt)}</h3>
         <ol type="A">${q.choices.map((choice, index) => `<li>${escapeHtml(choice)}${q.answer?.choiceIndex === index ? " · Your answer" : ""}</li>`).join("")}</ol>${feedback}</article>`;

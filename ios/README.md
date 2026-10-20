@@ -16,6 +16,8 @@ After completing all five questions, **Let a friend try** opens a fresh in-memor
 
 After an answer is saved, both normal and friend rounds scroll to the bottom so the explanation and next button are visible. Advancing to another question or the results returns to the top. Automatic scrolling respects Reduce Motion.
 
+After completing a quiz, **Share feedback** opens an optional note for future quizzes, with editable suggestions for difficulty or variety. It is also available on the completed Today card and when revisiting a completed quiz. The note is saved separately from interests/language/difficulty; it does not change answers, scores or streaks. The agent reads the 20 most recently updated notes in MCP context, while older notes remain attached to quiz history. Clear and save a note to remove it. Demo feedback stays in memory; friend rounds do not expose or change the owner’s note.
+
 Touch targets follow Apple’s 44 × 44 pt guidance. Primary and secondary quiz actions use large native controls; compact custom labels use `quizTapTarget()` inside the Button/Link label so their added space participates in hit testing. See [the touch-target audit](../docs/ios-touch-target-audit.md) for measurements and scope.
 
 Run the guest-session checks from the repository root:

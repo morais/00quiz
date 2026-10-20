@@ -87,6 +87,7 @@ struct TodayView: View {
                         }
                         .buttonStyle(.borderedProminent).controlSize(.large).tint(QuizStyle.green)
                         FriendQuizButton(quiz: quiz)
+                        QuizFeedbackButton(quiz: quiz)
                         if !quiz.completed {
                             Text("No timer. Just curiosity. Finish all five to keep your streak.")
                                 .font(.footnote).foregroundStyle(.secondary)
@@ -191,6 +192,7 @@ struct QuizPlayView: View {
                         }
                         .buttonStyle(.borderedProminent).controlSize(.large)
                         FriendQuizButton(quiz: quiz)
+                        QuizFeedbackButton(quiz: quiz)
                     }.padding(32).frame(maxWidth: .infinity)
                 } else {
                     questionContent(quiz: quiz, question: quiz.questions[index])

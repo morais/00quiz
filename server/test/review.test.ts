@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { migratedD1 } from "./d1";
 import { ensureReviewFixture, resetReviewQuiz, signInForReview } from "../src/review";
 import { authenticate, sha256Hex, type Principal } from "../src/auth";
-import { publishPack, snapshot, submitAnswer, type Env } from "../src/api";
+import { publishPack, saveFeedback, snapshot, submitAnswer, type Env } from "../src/api";
 import { reviewTenantForAccessCode } from "../src/oauth";
 
 const handles: Array<{ close(): void }> = [];
@@ -52,9 +52,12 @@ describe("dedicated App Review account", () => {
     await submitAnswer(env, "review", id, { questionIndex: 0, choiceIndex: 1 });
     await ensureReviewFixture(env, "review");
     expect((await snapshot(env, "review")).quiz?.score).toBe(1);
+    for (let i = 1; i < 5; i++) await submitAnswer(env, "review", id, { questionIndex: i, choiceIndex: 0 });
+    await saveFeedback(env, "review", id, { message: "Sample preference" });
     const principal: Principal = { tenantId: "review", kind: "app", tokenHash: "test", scopes: ["quiz:read", "quiz:write"] };
     expect((await resetReviewQuiz(env, principal)).status).toBe(200);
     expect((await snapshot(env, "review")).quiz?.questions.every(q => q.answer === null)).toBe(true);
+    expect((await snapshot(env, "review")).quiz?.feedback).toBeNull();
     vi.setSystemTime(new Date("2026-10-18T12:00:00Z"));
     await ensureReviewFixture(env, "review");
     expect((await snapshot(env, "review")).quiz?.day).toBe("2026-10-18");

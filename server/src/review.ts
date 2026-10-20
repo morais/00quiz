@@ -66,8 +66,13 @@ export async function resetReviewQuiz(env: Env, principal: Principal): Promise<R
   if (principal.kind !== "app") return json({ error: "Forbidden" }, 403);
   if (!(await ensureReviewFixture(env, principal.tenantId))) return json({ error: "Not found" }, 404);
   const prefs = await preferences(env, principal.tenantId), day = dateInZone(new Date(), prefs.timeZone);
-  await env.DB.prepare(`DELETE FROM answers WHERE tenant_id = ? AND pack_id IN
+  await env.DB.batch([
+    env.DB.prepare(`DELETE FROM quiz_feedback WHERE tenant_id = ? AND pack_id IN
+      (SELECT id FROM quiz_packs WHERE tenant_id = ? AND day = ?)`)
+      .bind(principal.tenantId, principal.tenantId, day),
+    env.DB.prepare(`DELETE FROM answers WHERE tenant_id = ? AND pack_id IN
     (SELECT id FROM quiz_packs WHERE tenant_id = ? AND day = ?)`)
-    .bind(principal.tenantId, principal.tenantId, day).run();
+      .bind(principal.tenantId, principal.tenantId, day),
+  ]);
   return json(await snapshot(env, principal.tenantId));
 }

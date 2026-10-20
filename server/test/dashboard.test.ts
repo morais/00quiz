@@ -4,7 +4,7 @@ import { base64url, sha256Hex } from "../src/auth";
 import { resetAppleKeysForTest } from "../src/apple";
 import { dashboard, dashboardLogin, dashboardAppleLogin, dashboardAppleCallback, dashboardReviewLogin, dashboardLogout } from "../src/dashboard";
 import { openAIAppsChallenge } from "../src/openAIAppsChallenge";
-import { publishPack, submitAnswer, type Env } from "../src/api";
+import { publishPack, saveFeedback, submitAnswer, type Env } from "../src/api";
 import { reviewQuestions } from "../src/review";
 import worker from "../src/index";
 
@@ -53,6 +53,12 @@ describe("read-only quiz dashboard", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM answers WHERE pack_id=?").get(current.id)).toMatchObject({n:0});
     await submitAnswer(env,tenant,current.id,{questionIndex:0,choiceIndex:1});
     html=await(await dashboard(request("/dashboard",session),env)).text();expect(html).toContain("Octopuses have three hearts");expect(r.headers.get("cache-control")).toBe("no-store");
+    const previous=db.prepare("SELECT id FROM quiz_packs WHERE tenant_id=? AND day<'2026-10-18' ORDER BY day DESC LIMIT 1").get(tenant) as {id:string};
+    await saveFeedback(env,tenant,previous.id,{message:'More nature <script>alert("feedback")</script>'});
+    html=await(await dashboard(request("/dashboard",session),env)).text();
+    expect(html).toContain("Your feedback for future quizzes");
+    expect(html).toContain('More nature &lt;script&gt;alert(&quot;feedback&quot;)&lt;/script&gt;');
+    expect(html).not.toContain('<script>alert("feedback")</script>');
   });
   it("rejects cross-origin, invalid, revoked, expired, tampered and unallowlisted review sessions", async () => {
     const {db,env}=await setup();expect((await signIn(env,code,"https://evil.example")).status).toBe(403);expect((await signIn(env,"invalid")).status).toBe(401);

@@ -53,6 +53,14 @@ Both native and MCP review sign-in require an unrevoked, unexpired code and an a
 
 `node scripts/smoke-review.mjs` exercises the deployed synthetic reviewer account, scoring, reset, OAuth consent, PKCE, MCP context and app/MCP credential separation. It restores today’s sample quiz and revokes only its own test grants. Removing the tenant from `REVIEW_TENANT_IDS` disables further review exchanges; revoke its existing credentials as well when retiring access.
 
+## Post-quiz feedback
+
+Native sessions can `PUT /v1/quizzes/:id/feedback` with `{ "message": "More nature, a little harder" }` after all five answers. Notes are trimmed, limited to 1,000 UTF-16 code units, and saved once per account-owned quiz; an empty message removes the note. Identical retries preserve the note’s timestamp. Notes cascade with account/quiz deletion and are included in snapshots and history as nullable `feedback`. Review sample reset also removes that day’s note.
+
+MCP can read but cannot write feedback. `get_quiz_context.recentFeedback` returns up to 20 notes ordered by their latest edit, independently of its seven-item quiz history. The versioned hosted guidance tells agents to use these as requests about future quiz content, without changing published packs or silently replacing saved preferences. Apply the additive `0002_quiz_feedback.sql` migration before deploying this server. Older iOS clients ignore the added response field.
+
+`node scripts/smoke-feedback.mjs` verifies native save/edit/remove and read-only MCP delivery against an unnoted completed quiz in the separate synthetic OpenAI account. It leaves answers, scores, streaks and preferences unchanged, removes its own temporary note and revokes its own temporary credentials. Wrangler authentication is required for cleanup.
+
 ## OpenAI plugin review
 
 The public upload source is in `../plugin`; see `../docs/plugin/README.md` for packaging and review status. `GET /dashboard` offers a read-only browser view of preferences, quiz progress, current questions, recent history and future quiz titles. Apple sign-in reuses the registered web Services ID and callback, with a signed ten-minute state/nonce cookie and a signed 24-hour HttpOnly browser session. These cookies are not app or MCP credentials. Every read rechecks the account; synthetic reviewer sessions also recheck the code’s revocation, expiry, allowlist and absence of an Apple subject. The dashboard cannot submit answers or edit account data. Question and host text is HTML-escaped; future question contents remain hidden.

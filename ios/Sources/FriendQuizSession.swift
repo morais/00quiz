@@ -31,6 +31,7 @@ struct FriendQuizSession: Identifiable {
     // this guest has locked an answer, just like the normal quiz experience.
     var quiz: DailyQuiz {
         var quiz = ownerQuiz
+        quiz.feedback = nil
         quiz.completed = completed
         quiz.score = score
         quiz.questions = ownerQuiz.questions.map { original in

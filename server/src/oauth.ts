@@ -377,7 +377,7 @@ export async function showConsent(req: Request, env: Env): Promise<Response> {
     : `<p><span class="status warning">Unverified client</span> This name was supplied by the client. Check the callback address before approving.</p>`;
   return html(env, `<h1>Connect ${htmlEscape(clientName)} to ${htmlEscape(appName(env))}?</h1>
     ${trust}
-    <p>This client can ${flow.scopes.includes("quiz:write") ? "read, set preferences, and publish quizzes for" : "read"} your quiz preferences, question packs, answers, and performance history.</p>
+    <p>This client can ${flow.scopes.includes("quiz:write") ? "read, set preferences, and publish quizzes for" : "read"} your quiz preferences, feedback, question packs, answers, and performance history. Your feedback notes can only be edited in the app.</p>
     <p class="detail"><span>Redirects to</span><code>${htmlEscape(flow.redirect_uri)}</code></p>
     <form method="post" action="/oauth/consent">
       <input type="hidden" name="flow" value="${htmlEscape(flowId)}">

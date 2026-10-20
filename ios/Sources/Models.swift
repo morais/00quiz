@@ -7,6 +7,7 @@ struct QuizPreferences: Codable, Equatable {
     var timeZone = "UTC"
 }
 struct QuizAnswer: Codable { let choiceIndex: Int; let correct: Bool; let answeredAt: String }
+struct QuizFeedback: Codable { let message: String; let updatedAt: String }
 struct QuizQuestion: Codable, Identifiable {
     let index: Int
     let prompt: String
@@ -27,6 +28,7 @@ struct DailyQuiz: Codable, Identifiable {
     var completed: Bool
     var score: Int
     var questions: [QuizQuestion]
+    var feedback: QuizFeedback? = nil
     var answeredCount: Int { questions.filter { $0.answer != nil }.count }
 }
 struct QuizStreak: Codable { var current: Int; var longest: Int; var completedDays: Int }

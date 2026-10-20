@@ -1,7 +1,7 @@
 import { z, ZodError } from "zod";
 import { publicOrigin, type Principal } from "./auth";
 import { instructionsMetadata } from "./agentInstructions";
-import { addDays, dateInZone, PackInput, PreferencesPatch, presentPack, streaks,
+import { addDays, dateInZone, FeedbackInput, PackInput, PreferencesPatch, presentPack, streaks,
   type AnswerRow, type PackRow, type Preferences, type QuestionData } from "./model";
 
 export interface Env {
@@ -64,16 +64,41 @@ export async function publishPack(env: Env, tenantId: string, input: unknown, no
 }
 export async function snapshot(env: Env, tenantId: string, now = new Date()) {
   const prefs = await preferences(env, tenantId), today = dateInZone(now, prefs.timeZone);
-  const packs = (await env.DB.prepare("SELECT * FROM quiz_packs WHERE tenant_id = ? AND day <= ? ORDER BY day DESC LIMIT 90")
-    .bind(tenantId, today).all<PackRow>()).results;
+  const packs = (await env.DB.prepare(`SELECT p.*, f.message AS feedback_message, f.updated_at AS feedback_updated_at
+    FROM quiz_packs p LEFT JOIN quiz_feedback f ON f.pack_id = p.id AND f.tenant_id = p.tenant_id
+    WHERE p.tenant_id = ? AND p.day <= ? ORDER BY p.day DESC LIMIT 90`)
+    .bind(tenantId, today).all<PackRow & { feedback_message: string | null; feedback_updated_at: string | null }>()).results;
   const answers = (await env.DB.prepare(`SELECT a.* FROM answers a JOIN quiz_packs p ON p.id = a.pack_id
     WHERE a.tenant_id = ? AND p.day <= ? ORDER BY p.day DESC LIMIT 450`).bind(tenantId, today).all<AnswerRow>()).results;
   const allDays = (await env.DB.prepare(`SELECT p.day, COUNT(a.question_index) AS answered FROM quiz_packs p
     LEFT JOIN answers a ON a.pack_id = p.id WHERE p.tenant_id = ? AND p.day <= ? GROUP BY p.id ORDER BY p.day`)
     .bind(tenantId, today).all<{ day: string; answered: number }>()).results;
-  const rendered = packs.map(pack => presentPack(pack, answers.filter(a => a.pack_id === pack.id), today));
+  const rendered = packs.map(pack => ({ ...presentPack(pack, answers.filter(a => a.pack_id === pack.id), today),
+    feedback: pack.feedback_message === null ? null : { message: pack.feedback_message, updatedAt: pack.feedback_updated_at! } }));
   return { today, preferences: prefs, streak: streaks(allDays.map(d => ({ day: d.day, completed: d.answered === 5 })), today),
     quiz: rendered.find(p => p.day === today) ?? null, history: rendered.filter(p => p.day < today) };
+}
+export async function saveFeedback(env: Env, tenantId: string, packId: string, input: unknown, now = new Date()) {
+  const { message } = FeedbackInput.parse(input);
+  const pack = await env.DB.prepare("SELECT day FROM quiz_packs WHERE id = ? AND tenant_id = ?")
+    .bind(packId, tenantId).first<{ day: string }>();
+  if (!pack) throw new HttpError(404, "Quiz not found");
+  const answered = await env.DB.prepare("SELECT COUNT(*) AS count FROM answers WHERE pack_id = ? AND tenant_id = ?")
+    .bind(packId, tenantId).first<{ count: number }>();
+  if (pack.day > dateInZone(now, (await preferences(env, tenantId)).timeZone) || answered?.count !== 5) {
+    throw new HttpError(409, "Finish all five questions before sharing feedback");
+  }
+  if (!message) {
+    await env.DB.prepare("DELETE FROM quiz_feedback WHERE pack_id = ? AND tenant_id = ?").bind(packId, tenantId).run();
+    return { feedback: null };
+  }
+  await env.DB.prepare(`INSERT INTO quiz_feedback (pack_id, tenant_id, message, updated_at) VALUES (?, ?, ?, ?)
+    ON CONFLICT(pack_id) DO UPDATE SET message = excluded.message, updated_at = excluded.updated_at
+    WHERE quiz_feedback.tenant_id = excluded.tenant_id AND quiz_feedback.message <> excluded.message`)
+    .bind(packId, tenantId, message, now.toISOString()).run();
+  const saved = await env.DB.prepare("SELECT message, updated_at FROM quiz_feedback WHERE pack_id = ? AND tenant_id = ?")
+    .bind(packId, tenantId).first<{ message: string; updated_at: string }>();
+  return { feedback: { message: saved!.message, updatedAt: saved!.updated_at } };
 }
 export async function submitAnswer(env: Env, tenantId: string, packId: string, input: unknown, now = new Date()) {
   const value = z.strictObject({ questionIndex: z.number().int().min(0).max(4), choiceIndex: z.number().int().min(0).max(3) }).parse(input);
@@ -105,7 +130,11 @@ export async function agentContext(env: Env, tenantId: string) {
   }
   const scheduled = (await env.DB.prepare("SELECT day, title FROM quiz_packs WHERE tenant_id = ? AND day >= ? ORDER BY day")
     .bind(tenantId, state.today).all()).results;
-  return { ...state, topics, scheduled, agentInstructions: await instructionsMetadata(publicOrigin(env)),
+  const recentFeedback = (await env.DB.prepare(`SELECT f.pack_id AS packId, p.day, p.title, f.message, f.updated_at AS updatedAt
+    FROM quiz_feedback f JOIN quiz_packs p ON p.id = f.pack_id AND p.tenant_id = f.tenant_id
+    WHERE f.tenant_id = ? AND p.day <= ? ORDER BY f.updated_at DESC, f.pack_id LIMIT 20`)
+    .bind(tenantId, state.today).all()).results;
+  return { ...state, topics, scheduled, recentFeedback, agentInstructions: await instructionsMetadata(publicOrigin(env)),
     instructions: "If agentInstructions.version is new to you, read get_quiz_instructions before preparing a quiz. The same guidance is at agentInstructions.url." };
 }
 export function apiError(error: unknown): Response {
@@ -119,6 +148,11 @@ export async function routeApi(req: Request, env: Env, principal: Principal) {
     const path = new URL(req.url).pathname;
     if (path === "/v1/snapshot" && req.method === "GET") return json(await snapshot(env, principal.tenantId));
     if (path === "/v1/preferences" && req.method === "PATCH") return json(await updatePreferences(env, principal.tenantId, await body(req)));
+    const feedback = /^\/v1\/quizzes\/([a-f0-9-]{36})\/feedback$/.exec(path);
+    if (feedback && req.method === "PUT") {
+      if (principal.kind !== "app") return json({ error: "Forbidden" }, 403);
+      return json(await saveFeedback(env, principal.tenantId, feedback[1], await body(req)));
+    }
     const answer = /^\/v1\/quizzes\/([a-f0-9-]{36})\/answers$/.exec(path);
     if (answer && req.method === "POST") return json(await submitAnswer(env, principal.tenantId, answer[1], await body(req)));
     return json({ error: "Not found" }, 404);

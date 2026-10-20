@@ -16,9 +16,15 @@ import Foundation
             original.questions[index].sourceURL = "https://example.com/source"
         }
         original.score = 4
+        original.feedback = QuizFeedback(message: "More nature, please.", updatedAt: "owner-feedback")
         let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
         let originalBytes = try encoder.encode(original)
+        var legacy = try JSONSerialization.jsonObject(with: originalBytes) as! [String: Any]
+        legacy.removeValue(forKey: "feedback")
+        let legacyQuiz = try JSONDecoder().decode(DailyQuiz.self, from: JSONSerialization.data(withJSONObject: legacy))
+        precondition(legacyQuiz.feedback == nil, "Cached quizzes from before feedback must remain readable")
         var guest = FriendQuizSession(quiz: original)!
+        precondition(guest.quiz.feedback == nil, "Owner preference notes must stay out of a friend's round")
         precondition(guest.score == 0 && !guest.completed && guest.quiz.answeredCount == 0)
         precondition(guest.quiz.questions.allSatisfy { $0.answer == nil && $0.correctIndex == nil && $0.explanation == nil && $0.sourceURL == nil }, "Guest questions must hide owner answers and feedback")
 
