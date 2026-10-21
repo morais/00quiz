@@ -57,5 +57,10 @@ namespace_id = "23003"
   limit = 300
   period = 60
 
+# Run the Worker near the D1 primary when that makes requests faster: every
+# request makes several sequential database calls.
+[placement]
+mode = "smart"
+
 [observability]
 enabled = true
