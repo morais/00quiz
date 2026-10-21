@@ -78,6 +78,20 @@ describe("daily quiz integrity", () => {
     expect(state.history).toHaveLength(89);
     expect([state.quiz!, ...state.history].map(p => p.questions[0].answer?.choiceIndex)).toEqual(Array.from({ length: 90 }, (_, i) => i % 4));
     expect(state.streak).toEqual({ current: 0, longest: 0, completedDays: 0 });
+    const history = async (args: object) => {
+      const response = await routeMcp(rpc("get_quiz_history", args), env, principal);
+      return ((await response.json()) as { result: { structuredContent: { history: { day: string }[] } } }).result.structuredContent.history;
+    };
+    // MCP reads the real clock: compare with a full snapshot taken the same way,
+    // with and without a quiz for today.
+    for (const withToday of [false, true]) {
+      const today = dateInZone(new Date(), "UTC");
+      if (withToday) db.prepare("INSERT OR IGNORE INTO quiz_packs VALUES ('today', 'one', ?, 'New', 'Hello', ?, ?)").run(today, questions, now.toISOString());
+      const full = JSON.parse(JSON.stringify((await snapshot(env, "one")).history)) as { day: string }[];
+      expect((await history({})).map(p => p.day)).toEqual(full.slice(0, 14).map(p => p.day));
+      expect(await history({ limit: 3 })).toEqual(full.slice(0, 3));
+      expect(await history({ limit: 90 })).toEqual(full.slice(0, 90));
+    }
   });
   it("keeps optional preferences empty until set and preserves omitted values", async () => {
     const { env } = setup();

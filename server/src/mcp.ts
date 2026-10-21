@@ -64,8 +64,11 @@ export async function routeMcp(req: Request, env: Env, principal: Principal): Pr
         result = { ...context, history: context.history.slice(0, 7) }; break;
       }
       case "get_quiz_history": {
-        const state = await snapshot(env, principal.tenantId);
-        result = { today: state.today, history: state.history.slice(0, (parsed.data as { limit: number }).limit) }; break;
+        // One extra pack covers today's quiz, which is not history, within the
+        // snapshot's usual 90.
+        const limit = (parsed.data as { limit: number }).limit;
+        const state = await snapshot(env, principal.tenantId, new Date(), { packs: Math.min(limit + 1, 90) });
+        result = { today: state.today, history: state.history.slice(0, limit) }; break;
       }
       case "update_quiz_preferences": result = await updatePreferences(env, principal.tenantId, parsed.data); break;
       case "publish_daily_quiz": result = await publishPack(env, principal.tenantId, parsed.data); break;

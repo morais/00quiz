@@ -65,16 +65,17 @@ export async function publishPack(env: Env, tenantId: string, input: unknown, no
   return { id: saved.id, day: saved.day, published: true, questionCount: 5 };
 }
 // Callers that already read the preferences pass them in; the remaining reads
-// share one D1 round trip.
-export async function snapshot(env: Env, tenantId: string, now = new Date(), known?: Preferences) {
+// share one D1 round trip. `packs` bounds today's quiz plus history.
+export async function snapshot(env: Env, tenantId: string, now = new Date(),
+  { prefs: known, packs: packLimit = 90 }: { prefs?: Preferences; packs?: number } = {}) {
   const prefs = known ?? await preferences(env, tenantId), today = dateInZone(now, prefs.timeZone);
   const [packResult, answerResult, streakResult] = await env.DB.batch<unknown>([
     env.DB.prepare(`SELECT p.*, f.message AS feedback_message, f.updated_at AS feedback_updated_at
       FROM quiz_packs p LEFT JOIN quiz_feedback f ON f.pack_id = p.id AND f.tenant_id = p.tenant_id
-      WHERE p.tenant_id = ? AND p.day <= ? ORDER BY p.day DESC LIMIT 90`).bind(tenantId, today),
+      WHERE p.tenant_id = ? AND p.day <= ? ORDER BY p.day DESC LIMIT ?`).bind(tenantId, today, packLimit),
     // Only the answers for the packs above, so reads stay flat as history grows.
     env.DB.prepare(`SELECT * FROM answers WHERE tenant_id = ? AND pack_id IN
-      (SELECT id FROM quiz_packs WHERE tenant_id = ? AND day <= ? ORDER BY day DESC LIMIT 90)`).bind(tenantId, tenantId, today),
+      (SELECT id FROM quiz_packs WHERE tenant_id = ? AND day <= ? ORDER BY day DESC LIMIT ?)`).bind(tenantId, tenantId, today, packLimit),
     env.DB.prepare("SELECT * FROM tenant_streaks WHERE tenant_id = ?").bind(tenantId),
   ]);
   const packs = packResult.results as (PackRow & { feedback_message: string | null; feedback_updated_at: string | null })[];
@@ -167,7 +168,7 @@ export async function submitAnswer(env: Env, tenantId: string, packId: string, i
       await refreshStreak(env, tenantId);
   }
   if (saved?.choice_index !== value.choiceIndex) throw new HttpError(409, "You've already answered this question");
-  return snapshot(env, tenantId, now, prefs);
+  return snapshot(env, tenantId, now, { prefs });
 }
 export async function agentContext(env: Env, tenantId: string) {
   const state = await snapshot(env, tenantId);
