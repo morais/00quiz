@@ -4,9 +4,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
 import { execFileSync } from "node:child_process";
+import { reviewAccessPath } from "./review-access.mjs";
 
 const origin = "https://api.00quiz.com";
-const { accessCode, tenantId } = JSON.parse(readFileSync(new URL("../.review-access.json", import.meta.url), "utf8"));
+const { accessCode, tenantId } = JSON.parse(readFileSync(reviewAccessPath(), "utf8"));
 const digest = x => createHash("sha256").update(x).digest("hex");
 const hashes = [];
 let app;

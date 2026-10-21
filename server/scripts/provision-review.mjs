@@ -2,16 +2,18 @@
 // The raw code stays in an ignored, owner-readable file; D1 stores its hash.
 import { randomBytes, randomUUID, createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync, chmodSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, chmodSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { reviewAccessPath } from "./review-access.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 if (process.argv.slice(2).some(x => x !== "--local" && x !== "--plugin")) throw new Error("Usage: provision-review.mjs [--local] [--plugin]");
 const local = process.argv.includes("--local");
-const prefix = process.argv.includes("--plugin") ? ".plugin-review-access" : ".review-access";
-const path = join(root, prefix + (local ? ".local.json" : ".json"));
+const path = reviewAccessPath({ plugin: process.argv.includes("--plugin"), local });
+mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+chmodSync(dirname(path), 0o700);
 const saved = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : {
   tenantId: randomUUID(), accessCode: `qq_review_${randomBytes(32).toString("base64url")}`,
   expiresAt: new Date(Date.now() + 365 * 86400000).toISOString(), provisioned: false,

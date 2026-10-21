@@ -40,4 +40,4 @@ The listing, six native screenshots and review walkthrough are in [`docs/appstor
 
 ## OpenAI plugin preparation
 
-The portable upload source is in [`plugin`](plugin), with review status and recording steps in [`docs/plugin`](docs/plugin/README.md). It connects to the existing OAuth MCP server and reads hosted quiz instructions when their version changes. Run `python3 scripts/package-plugin.py` to build and inspect a public preparation ZIP, or add `--require-ready` to reject missing publication facts or a demo URL. The existing private development plugin remains separate.
+OpenAI plugin submission source, listing, review evidence and packaging live in the private sibling `00quiz-www/plugin-submission` repository directory. Run `python3 plugin-submission/build.py` there to build the preparation ZIP. The app and production MCP backend remain in this repository.

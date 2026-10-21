@@ -26,4 +26,4 @@ You may also sign in with Apple without an invitation or pre-created account. Su
 
 Privacy: https://00quiz.com/privacy. Support: https://00quiz.com/support.
 
-The raw review code is stored only in the ignored `server/.review-access.json` and App Store Connect’s secure reviewer password field, never in this file or screenshots.
+The raw review code is stored only in the ignored `../00quiz-www/.private/reviewer-access/appstore.json` and App Store Connect’s secure reviewer password field, never in this file or screenshots.

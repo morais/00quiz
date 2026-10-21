@@ -31,7 +31,7 @@ The public [privacy](https://00quiz.com/privacy), [support](https://00quiz.com/s
 
 ## Reviewer access
 
-`review-notes.md` documents the feature walkthrough. The secure review code is only in ignored `server/.review-access.json` and Apple’s reviewer password field. It is not embedded in the app, screenshots, notes or repository. The synthetic account is allowlisted, cannot be a personal Apple account, and exercises normal backend APIs. Its sample questions follow the server’s real local day. It supports repeat testing without altering a personal account. The same code can enter the normal OAuth/PKCE/consent flow for an MCP test.
+`review-notes.md` documents the feature walkthrough. The secure review code is only in ignored `../00quiz-www/.private/reviewer-access/appstore.json` and Apple’s reviewer password field. It is not embedded in the app, screenshots, notes or repository. The synthetic account is allowlisted, cannot be a personal Apple account, and exercises normal backend APIs. Its sample questions follow the server’s real local day. It supports repeat testing without altering a personal account. The same code can enter the normal OAuth/PKCE/consent flow for an MCP test.
 
 Keep the code active during review. The provisioned credential expires in October 2027. See `server/README.md` for provisioning, revocation and safe test commands.
 
