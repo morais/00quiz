@@ -40,17 +40,24 @@ export function addDays(day: string, amount: number): string {
 
 // A streak is consecutive completed calendar days. Today remains open until
 // midnight, so yesterday's streak is still current while today's is unfinished.
-export function streaks(packs: { day: string; completed: boolean }[], today: string) {
-  const days = [...packs].filter(p => p.day <= today).sort((a, b) => a.day.localeCompare(b.day));
+export type StreakSummary = { lastDay: string | null; run: number; longest: number; completedDays: number };
+/// Summarises completed days in calendar order: the run ending on the last
+/// one, the longest run and how many there are.
+export function summarizeStreaks(days: string[]): StreakSummary {
   let run = 0, longest = 0, last: string | null = null;
-  const completed = days.filter(day => day.completed);
-  for (const day of completed) {
-    run = last && addDays(last, 1) === day.day ? run + 1 : 1;
+  for (const day of days) {
+    run = last && addDays(last, 1) === day ? run + 1 : 1;
     longest = Math.max(longest, run);
-    last = day.day;
+    last = day;
   }
-  const current = last === today || last === addDays(today, -1) ? run : 0;
-  return { current, longest, completedDays: completed.length };
+  return { lastDay: last, run, longest, completedDays: days.length };
+}
+export function currentStreak(summary: StreakSummary, today: string) {
+  const current = summary.lastDay === today || summary.lastDay === addDays(today, -1) ? summary.run : 0;
+  return { current, longest: summary.longest, completedDays: summary.completedDays };
+}
+export function streaks(packs: { day: string; completed: boolean }[], today: string) {
+  return currentStreak(summarizeStreaks(packs.filter(p => p.completed && p.day <= today).map(p => p.day).sort()), today);
 }
 
 export function presentPack(pack: PackRow, answers: AnswerRow[], today: string) {

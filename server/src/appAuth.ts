@@ -61,6 +61,7 @@ export async function deleteAccount(req: Request, env: Env, principal: Principal
   await env.DB.batch([
     env.DB.prepare("DELETE FROM quiz_packs WHERE tenant_id = ?").bind(tenant.id),
     env.DB.prepare("DELETE FROM preferences WHERE tenant_id = ?").bind(tenant.id),
+    env.DB.prepare("DELETE FROM tenant_streaks WHERE tenant_id = ?").bind(tenant.id),
     env.DB.prepare("DELETE FROM oauth_flows WHERE tenant_id = ?").bind(tenant.id),
     env.DB.prepare("DELETE FROM oauth_codes WHERE tenant_id = ?").bind(tenant.id),
     env.DB.prepare("DELETE FROM credentials WHERE tenant_id = ?").bind(tenant.id),

@@ -68,6 +68,7 @@ describe("versioned agent guidance", () => {
   it("advertises the version in ordinary context without repeating the whole guidance", async () => {
     const { db, d1 } = migratedD1();
     try {
+      db.prepare("INSERT INTO tenants VALUES ('tenant', 'tenant', NULL, '2026-01-01', '2026-01-01')").run();
       const state = await agentContext({ DB: d1, PUBLIC_ORIGIN: origin }, "tenant");
       expect(state.agentInstructions).toEqual({ version: (await agentInstructions()).version,
         url: `${origin}/agent-instructions`, tool: "get_quiz_instructions" });

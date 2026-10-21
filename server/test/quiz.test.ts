@@ -117,6 +117,41 @@ describe("daily quiz integrity", () => {
   });
 });
 
+describe("stored streak summary", () => {
+  // The old full scan, kept as the reference the stored summary must match.
+  const fullScan = (db: ReturnType<typeof setup>["db"], today: string) => streaks((db.prepare(`SELECT p.day, COUNT(a.question_index) AS answered
+    FROM quiz_packs p LEFT JOIN answers a ON a.pack_id = p.id WHERE p.tenant_id = 'one' GROUP BY p.id`).all() as { day: string; answered: number }[])
+    .map(d => ({ day: d.day, completed: d.answered === 5 })), today);
+  const play = async (env: Env, day: string, at: Date, count = 5) => {
+    const { id } = await publishPack(env, "one", pack(day), at);
+    for (let i = 0; i < count; i++) await submitAnswer(env, "one", id, { questionIndex: i, choiceIndex: 0 }, at);
+  };
+  it("matches a full scan over gaps, partial days and a rebuilt summary", async () => {
+    const { db, env } = setup();
+    let seed = 7; const random = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
+    for (let i = 0; i < 60; i++) {
+      const day = addDays("2026-08-01", i), at = new Date(`${day}T09:00:00Z`);
+      if (random() < 0.85) await play(env, day, at, random() < 0.7 ? 5 : Math.floor(random() * 5));
+      if (i === 30) db.prepare("DELETE FROM tenant_streaks").run();
+      expect((await snapshot(env, "one", at)).streak).toEqual(fullScan(db, day));
+    }
+    expect(fullScan(db, "2026-09-29").longest).toBeGreaterThan(2);
+  });
+  it("matches a full scan when a time zone change completes days out of order", async () => {
+    const { db, env } = setup();
+    const at = new Date("2026-10-16T11:00:00Z");
+    await play(env, "2026-10-15", new Date("2026-10-15T11:00:00Z"));
+    await updatePreferences(env, "one", { timeZone: "Pacific/Kiritimati" });
+    await play(env, "2026-10-17", at);
+    expect((await snapshot(env, "one", at)).streak).toEqual(fullScan(db, "2026-10-17"));
+    await updatePreferences(env, "one", { timeZone: "Pacific/Honolulu" });
+    expect((await snapshot(env, "one", at)).streak).toEqual(fullScan(db, "2026-10-16"));
+    await play(env, "2026-10-16", at);
+    expect((await snapshot(env, "one", at)).streak).toEqual(fullScan(db, "2026-10-16"));
+    expect((await snapshot(env, "one", new Date("2026-10-17T11:00:00Z"))).streak).toEqual({ current: 3, longest: 3, completedDays: 3 });
+  });
+});
+
 describe("streak calendar rules", () => {
   it("counts consecutive completed calendar days regardless of score and leaves today open", () => {
     expect(streaks([{ day: "2026-10-15", completed: true }, { day: "2026-10-16", completed: true }, { day: "2026-10-17", completed: false }], "2026-10-17"))

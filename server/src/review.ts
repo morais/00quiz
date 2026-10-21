@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { body, json, preferences, snapshot, type Env } from "./api";
+import { body, json, preferences, refreshStreak, snapshot, type Env } from "./api";
 import { issueCredential, sha256Hex, type Principal } from "./auth";
 import { addDays, dateInZone, type QuestionData } from "./model";
 import { reviewTenantForAccessCode } from "./oauth";
@@ -35,6 +35,7 @@ export async function ensureReviewFixture(env: Env, tenantId: string, now = new 
   if (!(await isReviewTenant(env, tenantId))) return false;
   await env.DB.prepare("INSERT OR IGNORE INTO preferences (tenant_id, updated_at) VALUES (?, ?)").bind(tenantId, now.toISOString()).run();
   const prefs = await preferences(env, tenantId), today = dateInZone(now, prefs.timeZone);
+  let answered = false;
   for (let offset = 3; offset >= 0; offset--) {
     const day = addDays(today, -offset), id = await fixtureId(tenantId, day);
     await env.DB.prepare(`INSERT OR IGNORE INTO quiz_packs (id, tenant_id, day, title, host_message, questions, created_at)
@@ -45,10 +46,12 @@ export async function ensureReviewFixture(env: Env, tenantId: string, now = new 
     const saved = await env.DB.prepare("SELECT id FROM quiz_packs WHERE tenant_id = ? AND day = ?").bind(tenantId, day).first<{ id: string }>();
     if (saved?.id !== id) continue;
     const score = [0, 4, 3, 5][offset];
-    await env.DB.batch(reviewQuestions.map((q, index) => env.DB.prepare(`INSERT OR IGNORE INTO answers
+    const results = await env.DB.batch(reviewQuestions.map((q, index) => env.DB.prepare(`INSERT OR IGNORE INTO answers
       (pack_id, tenant_id, question_index, choice_index, correct, answered_at) VALUES (?, ?, ?, ?, ?, ?)`)
       .bind(id, tenantId, index, index < score ? q.correctIndex : (q.correctIndex + 1) % 4, index < score ? 1 : 0, `${day}T09:00:00Z`)));
+    answered ||= results.some(result => result.meta.changes > 0);
   }
+  if (answered) await refreshStreak(env, tenantId);
   return true;
 }
 
@@ -74,5 +77,6 @@ export async function resetReviewQuiz(env: Env, principal: Principal): Promise<R
     (SELECT id FROM quiz_packs WHERE tenant_id = ? AND day = ?)`)
       .bind(principal.tenantId, principal.tenantId, day),
   ]);
+  await refreshStreak(env, principal.tenantId);
   return json(await snapshot(env, principal.tenantId));
 }

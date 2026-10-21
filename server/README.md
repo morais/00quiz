@@ -4,6 +4,8 @@ TypeScript Worker + D1, based on 00Todo's Apple/OAuth implementation. Install wi
 
 Copy `wrangler.toml.sample` to ignored `wrangler.toml`. Set your public origin, native App ID, web Services ID, Apple team/key identifiers, route and D1 database. Enable Sign in with Apple on the native App ID; associate the Services ID and private key with it. Register `https://<api-host>/auth/apple/callback` for web sign-in. Create D1 with `npx wrangler d1 create <name>` and apply `npx wrangler d1 migrations apply <name> --remote`.
 
+Streaks come from a per-account summary in `tenant_streaks`, so a snapshot reads one row instead of the whole history. Apply `0003_streak_summary.sql` before deploying a server that reads it. Each account's summary is built from its history on its first snapshot, then advanced when a quiz's fifth answer lands. Code that adds or removes answers any other way calls `refreshStreak`.
+
 Install `APPLE_PRIVATE_KEY` and a random 32+ character `OAUTH_SIGNING_SECRET` with Wrangler secrets. An App Store Connect API key is separate from the Sign in with Apple key. Verify `npx wrangler whoami` before deploying with `npm run deploy`. Optional `MCP_VERIFIED_CLIENTS` maps exact client callback URLs to trusted display names on the consent page. Unknown clients remain usable and are labelled unverified.
 
 ## REST

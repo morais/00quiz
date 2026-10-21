@@ -1,8 +1,8 @@
 import * as z from "zod";
 import { publicOrigin, type Principal } from "./auth";
 import { instructionsMetadata } from "./agentInstructions";
-import { addDays, dateInZone, FeedbackInput, PackInput, PreferencesPatch, presentPack, streaks,
-  type AnswerRow, type PackRow, type Preferences, type QuestionData } from "./model";
+import { addDays, currentStreak, dateInZone, FeedbackInput, PackInput, PreferencesPatch, presentPack, summarizeStreaks,
+  type AnswerRow, type PackRow, type Preferences, type QuestionData, type StreakSummary } from "./model";
 
 export interface Env {
   DB: D1Database; PUBLIC_ORIGIN: string; APP_NAME?: string;
@@ -68,22 +68,48 @@ export async function publishPack(env: Env, tenantId: string, input: unknown, no
 // share one D1 round trip.
 export async function snapshot(env: Env, tenantId: string, now = new Date(), known?: Preferences) {
   const prefs = known ?? await preferences(env, tenantId), today = dateInZone(now, prefs.timeZone);
-  const [packResult, answerResult, dayResult] = await env.DB.batch<unknown>([
+  const [packResult, answerResult, streakResult] = await env.DB.batch<unknown>([
     env.DB.prepare(`SELECT p.*, f.message AS feedback_message, f.updated_at AS feedback_updated_at
       FROM quiz_packs p LEFT JOIN quiz_feedback f ON f.pack_id = p.id AND f.tenant_id = p.tenant_id
       WHERE p.tenant_id = ? AND p.day <= ? ORDER BY p.day DESC LIMIT 90`).bind(tenantId, today),
     // Only the answers for the packs above, so reads stay flat as history grows.
     env.DB.prepare(`SELECT * FROM answers WHERE tenant_id = ? AND pack_id IN
       (SELECT id FROM quiz_packs WHERE tenant_id = ? AND day <= ? ORDER BY day DESC LIMIT 90)`).bind(tenantId, tenantId, today),
-    env.DB.prepare(`SELECT p.day, COUNT(a.question_index) AS answered FROM quiz_packs p
-      LEFT JOIN answers a ON a.pack_id = p.id WHERE p.tenant_id = ? AND p.day <= ? GROUP BY p.id ORDER BY p.day`).bind(tenantId, today),
+    env.DB.prepare("SELECT * FROM tenant_streaks WHERE tenant_id = ?").bind(tenantId),
   ]);
   const packs = packResult.results as (PackRow & { feedback_message: string | null; feedback_updated_at: string | null })[];
-  const answers = answerResult.results as AnswerRow[], allDays = dayResult.results as { day: string; answered: number }[];
+  const answers = answerResult.results as AnswerRow[];
+  const streak = await streakSummary(env, tenantId, streakResult.results[0] as StreakRow | undefined, today);
   const rendered = packs.map(pack => ({ ...presentPack(pack, answers.filter(a => a.pack_id === pack.id), today),
     feedback: pack.feedback_message === null ? null : { message: pack.feedback_message, updatedAt: pack.feedback_updated_at! } }));
-  return { today, preferences: prefs, streak: streaks(allDays.map(d => ({ day: d.day, completed: d.answered === 5 })), today),
+  return { today, preferences: prefs, streak: currentStreak(streak, today),
     quiz: rendered.find(p => p.day === today) ?? null, history: rendered.filter(p => p.day < today) };
+}
+type StreakRow = { last_day: string | null; current_run: number; longest: number; completed_days: number };
+async function completedDays(env: Env, tenantId: string): Promise<string[]> {
+  const rows = (await env.DB.prepare(`SELECT p.day FROM quiz_packs p JOIN answers a ON a.pack_id = p.id
+    WHERE p.tenant_id = ? GROUP BY p.id HAVING COUNT(*) = 5 ORDER BY p.day`).bind(tenantId).all<{ day: string }>()).results;
+  return rows.map(row => row.day);
+}
+const saveStreak = (env: Env, tenantId: string, summary: StreakSummary, replace: boolean) => env.DB.prepare(`INSERT INTO tenant_streaks
+  (tenant_id, last_day, current_run, longest, completed_days) VALUES (?, ?, ?, ?, ?) ON CONFLICT(tenant_id) DO ${replace
+    ? "UPDATE SET last_day = excluded.last_day, current_run = excluded.current_run, longest = excluded.longest, completed_days = excluded.completed_days"
+    : "NOTHING"}`).bind(tenantId, summary.lastDay, summary.run, summary.longest, summary.completedDays).run();
+/// Rebuilds the stored summary from the full history, after answers change in
+/// a way the incremental update in submitAnswer cannot follow.
+export async function refreshStreak(env: Env, tenantId: string): Promise<void> {
+  await saveStreak(env, tenantId, summarizeStreaks(await completedDays(env, tenantId)), true);
+}
+// The stored summary covers every completed day. A tenant without one gets it
+// built from history; one whose last completed day is after today (a time zone
+// moved back) is summarised from history up to today instead.
+async function streakSummary(env: Env, tenantId: string, row: StreakRow | undefined, today: string): Promise<StreakSummary> {
+  if (row && (row.last_day === null || row.last_day <= today))
+    return { lastDay: row.last_day, run: row.current_run, longest: row.longest, completedDays: row.completed_days };
+  const days = await completedDays(env, tenantId);
+  // Never overwrites, so it cannot replace a newer summary written meanwhile.
+  if (!row) await saveStreak(env, tenantId, summarizeStreaks(days), false);
+  return summarizeStreaks(days.filter(day => day <= today));
 }
 export async function saveFeedback(env: Env, tenantId: string, packId: string, input: unknown, now = new Date()) {
   const { message } = FeedbackInput.parse(input);
@@ -121,12 +147,24 @@ export async function submitAnswer(env: Env, tenantId: string, packId: string, i
   if (!saved && pack.day !== today) throw new HttpError(409, "This quiz is closed. New answers are accepted on its local calendar day.");
   const question: QuestionData = JSON.parse(pack.questions)[value.questionIndex];
   if (!saved) {
-    const [, reread] = await env.DB.batch<unknown>([
+    // The fifth answer extends the stored streak in the same transaction. A
+    // completed day at or before the last one (after a time zone change), or
+    // a missing summary, leaves it unchanged and is rebuilt below.
+    const [inserted, advanced, reread, answered] = await env.DB.batch<unknown>([
       env.DB.prepare(`INSERT OR IGNORE INTO answers (pack_id, tenant_id, question_index, choice_index, correct, answered_at)
         VALUES (?, ?, ?, ?, ?, ?)`).bind(packId, tenantId, value.questionIndex, value.choiceIndex,
           Number(question.correctIndex === value.choiceIndex), now.toISOString()),
-      answerQuery]);
+      env.DB.prepare(`UPDATE tenant_streaks SET
+        current_run = CASE WHEN last_day = date(?, '-1 day') THEN current_run + 1 ELSE 1 END,
+        longest = max(longest, CASE WHEN last_day = date(?, '-1 day') THEN current_run + 1 ELSE 1 END),
+        completed_days = completed_days + 1, last_day = ?
+        WHERE tenant_id = ? AND (last_day IS NULL OR last_day < ?) AND (SELECT COUNT(*) FROM answers WHERE pack_id = ?) = 5`)
+        .bind(pack.day, pack.day, pack.day, tenantId, pack.day, packId),
+      answerQuery,
+      env.DB.prepare("SELECT COUNT(*) AS count FROM answers WHERE pack_id = ?").bind(packId)]);
     saved = reread.results[0] as AnswerRow | undefined;
+    if (inserted.meta.changes && (answered.results[0] as { count: number }).count === 5 && !advanced.meta.changes)
+      await refreshStreak(env, tenantId);
   }
   if (saved?.choice_index !== value.choiceIndex) throw new HttpError(409, "You've already answered this question");
   return snapshot(env, tenantId, now, prefs);
