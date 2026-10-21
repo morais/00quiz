@@ -3,6 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2026-10-17"
 workers_dev = false
 preview_urls = false
+# Minified bundles load faster; uploaded source maps keep stack traces readable.
+minify = true
+upload_source_maps = true
 
 [vars]
 APP_NAME = "My Quiz"
