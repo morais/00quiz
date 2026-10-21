@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { agentContext, apiError, appName, body, json, publishPack, snapshot, updatePreferences, type Env } from "./api";
 import { PackInput, PreferencesPatch } from "./model";
 import { type Principal } from "./auth";

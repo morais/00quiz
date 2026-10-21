@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { body, json, preferences, snapshot, type Env } from "./api";
 import { issueCredential, sha256Hex, type Principal } from "./auth";
 import { addDays, dateInZone, type QuestionData } from "./model";

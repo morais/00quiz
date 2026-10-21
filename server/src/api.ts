@@ -1,4 +1,4 @@
-import { z, ZodError } from "zod";
+import * as z from "zod";
 import { publicOrigin, type Principal } from "./auth";
 import { instructionsMetadata } from "./agentInstructions";
 import { addDays, dateInZone, FeedbackInput, PackInput, PreferencesPatch, presentPack, streaks,
@@ -139,7 +139,7 @@ export async function agentContext(env: Env, tenantId: string) {
 }
 export function apiError(error: unknown): Response {
   if (error instanceof HttpError) return json({ error: error.message }, error.status);
-  if (error instanceof ZodError) return json({ error: "Invalid input", details: error.issues.map(i => ({ path: i.path, message: i.message })) }, 400);
+  if (error instanceof z.ZodError) return json({ error: "Invalid input", details: error.issues.map(i => ({ path: i.path, message: i.message })) }, 400);
   console.error("Request failed", error instanceof Error ? error.message : "unknown");
   return json({ error: "Could not complete the request" }, 500);
 }

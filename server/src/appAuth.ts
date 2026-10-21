@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { appleEmail, revokeAppleToken, verifyNativeAppleLogin } from "./apple";
 import { constantTimeEqual, findOrCreateTenant, issueCredential, revokeCredential, tenantForPrincipal, type Principal } from "./auth";
 import { json, type Env } from "./api";
