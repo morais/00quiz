@@ -43,6 +43,11 @@ def check(data):
             ensure(parsed.get('apps') is None and ext.get('apps') is None,'Private app declaration found')
             ensure(parsed.get('hooks') is None and ext.get('hooks') is None,'Lifecycle hooks found')
     ext=manifest['extensions']['com.openai'];interface=ext['interface']
+    categories={'Business & Operations','Communication','Creativity','Data & Analytics','Developer Tools','Education & Research','Entertainment','Finance','Healthcare','Other','Productivity','Scientific Research','Security','Travel'}
+    ensure(interface.get('category') in categories,'Use an exact supported OpenAI category title')
+    if interface.get('developerName'):
+        ensure(isinstance(interface['developerName'],str) and 0<len(interface['developerName'].strip())<=80,'Invalid developer name')
+        ensure(manifest.get('author',{}).get('name')==interface['developerName'],'Publisher names must agree')
     for key,limit in [('displayName',30),('shortDescription',30),('longDescription',4000)]:
         ensure(isinstance(interface.get(key),str) and 0<len(interface[key])<=limit,key+' has invalid length')
     for key in ['websiteURL','supportURL','privacyPolicyURL','termsOfServiceURL']:
@@ -61,6 +66,11 @@ def check(data):
     auth=server['extensions']['com.openai']['auth'];ensure(auth['type']=='oauth' and auth['client']=={'mode':'dcr'},'Expected OAuth with dynamic client registration')
     ensure(set(auth['defaultScopes'])=={'quiz:read','quiz:write'},'Unexpected scopes')
     cases=ext['review']['test_cases'];ensure(len(cases['positive'])==5 and len(cases['negative'])==3,'Need exactly five positive and three negative cases')
+    review_prompts=ext['review'].get('prompts',[])
+    ensure(isinstance(review_prompts,list) and len(review_prompts)<=20 and all(isinstance(p,str) and 0<len(p.strip())<=4000 for p in review_prompts),'Invalid review prompts')
+    countries=ext.get('publication',{}).get('countries')
+    if countries is not None:
+        ensure(isinstance(countries,list) and all(isinstance(c,str) and re.fullmatch(r'[A-Z]{2}',c) for c in countries),'Invalid country targeting')
     for group in ['positive','negative']:
         for case in cases[group]:
             fields=['description','prompt']+(['tools_triggered','expected_behavior'] if group=='positive' else [])
