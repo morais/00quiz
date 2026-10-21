@@ -32,11 +32,13 @@ export async function body(req: Request): Promise<unknown> {
   for (const chunk of chunks) { data.set(chunk, offset); offset += chunk.byteLength; }
   try { return JSON.parse(new TextDecoder().decode(data)); } catch { throw new HttpError(400, "Expected valid JSON"); }
 }
+type PreferencesRow = { interests: string; language: string | null; difficulty: string | null; time_zone: string };
+const preferencesQuery = (env: Env, tenantId: string) => env.DB.prepare("SELECT * FROM preferences WHERE tenant_id = ?").bind(tenantId);
+const presentPreferences = (row: PreferencesRow | null | undefined): Preferences => row
+  ? { interests: JSON.parse(row.interests), language: row.language, difficulty: row.difficulty, timeZone: row.time_zone }
+  : { interests: [], language: null, difficulty: null, timeZone: "UTC" };
 export async function preferences(env: Env, tenantId: string): Promise<Preferences> {
-  const row = await env.DB.prepare("SELECT * FROM preferences WHERE tenant_id = ?").bind(tenantId)
-    .first<{ interests: string; language: string | null; difficulty: string | null; time_zone: string }>();
-  return row ? { interests: JSON.parse(row.interests), language: row.language, difficulty: row.difficulty, timeZone: row.time_zone }
-    : { interests: [], language: null, difficulty: null, timeZone: "UTC" };
+  return presentPreferences(await preferencesQuery(env, tenantId).first<PreferencesRow>());
 }
 export async function updatePreferences(env: Env, tenantId: string, input: unknown) {
   const patch = PreferencesPatch.parse(input);
@@ -62,17 +64,21 @@ export async function publishPack(env: Env, tenantId: string, input: unknown, no
     throw new HttpError(409, "This day's quiz is already published. Published quizzes are immutable; identical retries are safe.");
   return { id: saved.id, day: saved.day, published: true, questionCount: 5 };
 }
-export async function snapshot(env: Env, tenantId: string, now = new Date()) {
-  const prefs = await preferences(env, tenantId), today = dateInZone(now, prefs.timeZone);
-  const packs = (await env.DB.prepare(`SELECT p.*, f.message AS feedback_message, f.updated_at AS feedback_updated_at
-    FROM quiz_packs p LEFT JOIN quiz_feedback f ON f.pack_id = p.id AND f.tenant_id = p.tenant_id
-    WHERE p.tenant_id = ? AND p.day <= ? ORDER BY p.day DESC LIMIT 90`)
-    .bind(tenantId, today).all<PackRow & { feedback_message: string | null; feedback_updated_at: string | null }>()).results;
-  const answers = (await env.DB.prepare(`SELECT a.* FROM answers a JOIN quiz_packs p ON p.id = a.pack_id
-    WHERE a.tenant_id = ? AND p.day <= ? ORDER BY p.day DESC LIMIT 450`).bind(tenantId, today).all<AnswerRow>()).results;
-  const allDays = (await env.DB.prepare(`SELECT p.day, COUNT(a.question_index) AS answered FROM quiz_packs p
-    LEFT JOIN answers a ON a.pack_id = p.id WHERE p.tenant_id = ? AND p.day <= ? GROUP BY p.id ORDER BY p.day`)
-    .bind(tenantId, today).all<{ day: string; answered: number }>()).results;
+// Callers that already read the preferences pass them in; the remaining reads
+// share one D1 round trip.
+export async function snapshot(env: Env, tenantId: string, now = new Date(), known?: Preferences) {
+  const prefs = known ?? await preferences(env, tenantId), today = dateInZone(now, prefs.timeZone);
+  const [packResult, answerResult, dayResult] = await env.DB.batch<unknown>([
+    env.DB.prepare(`SELECT p.*, f.message AS feedback_message, f.updated_at AS feedback_updated_at
+      FROM quiz_packs p LEFT JOIN quiz_feedback f ON f.pack_id = p.id AND f.tenant_id = p.tenant_id
+      WHERE p.tenant_id = ? AND p.day <= ? ORDER BY p.day DESC LIMIT 90`).bind(tenantId, today),
+    env.DB.prepare(`SELECT a.* FROM answers a JOIN quiz_packs p ON p.id = a.pack_id
+      WHERE a.tenant_id = ? AND p.day <= ? ORDER BY p.day DESC LIMIT 450`).bind(tenantId, today),
+    env.DB.prepare(`SELECT p.day, COUNT(a.question_index) AS answered FROM quiz_packs p
+      LEFT JOIN answers a ON a.pack_id = p.id WHERE p.tenant_id = ? AND p.day <= ? GROUP BY p.id ORDER BY p.day`).bind(tenantId, today),
+  ]);
+  const packs = packResult.results as (PackRow & { feedback_message: string | null; feedback_updated_at: string | null })[];
+  const answers = answerResult.results as AnswerRow[], allDays = dayResult.results as { day: string; answered: number }[];
   const rendered = packs.map(pack => ({ ...presentPack(pack, answers.filter(a => a.pack_id === pack.id), today),
     feedback: pack.feedback_message === null ? null : { message: pack.feedback_message, updatedAt: pack.feedback_updated_at! } }));
   return { today, preferences: prefs, streak: streaks(allDays.map(d => ({ day: d.day, completed: d.answered === 5 })), today),
@@ -102,23 +108,27 @@ export async function saveFeedback(env: Env, tenantId: string, packId: string, i
 }
 export async function submitAnswer(env: Env, tenantId: string, packId: string, input: unknown, now = new Date()) {
   const value = z.strictObject({ questionIndex: z.number().int().min(0).max(4), choiceIndex: z.number().int().min(0).max(3) }).parse(input);
-  const pack = await env.DB.prepare("SELECT * FROM quiz_packs WHERE id = ? AND tenant_id = ?").bind(packId, tenantId).first<PackRow>();
+  const answerQuery = env.DB.prepare("SELECT * FROM answers WHERE pack_id = ? AND question_index = ? AND tenant_id = ?")
+    .bind(packId, value.questionIndex, tenantId);
+  const [packResult, prefsResult, savedResult] = await env.DB.batch<unknown>([
+    env.DB.prepare("SELECT * FROM quiz_packs WHERE id = ? AND tenant_id = ?").bind(packId, tenantId), preferencesQuery(env, tenantId), answerQuery]);
+  const pack = packResult.results[0] as PackRow | undefined;
   if (!pack) throw new HttpError(404, "Quiz not found");
-  const today = dateInZone(now, (await preferences(env, tenantId)).timeZone);
+  const prefs = presentPreferences(prefsResult.results[0] as PreferencesRow | undefined), today = dateInZone(now, prefs.timeZone);
   // An identical retry remains valid after midnight, so a lost response can reconcile.
-  let saved = await env.DB.prepare("SELECT * FROM answers WHERE pack_id = ? AND question_index = ? AND tenant_id = ?")
-    .bind(packId, value.questionIndex, tenantId).first<AnswerRow>();
+  let saved = savedResult.results[0] as AnswerRow | undefined;
   if (!saved && pack.day !== today) throw new HttpError(409, "This quiz is closed. New answers are accepted on its local calendar day.");
   const question: QuestionData = JSON.parse(pack.questions)[value.questionIndex];
   if (!saved) {
-    await env.DB.prepare(`INSERT OR IGNORE INTO answers (pack_id, tenant_id, question_index, choice_index, correct, answered_at)
-      VALUES (?, ?, ?, ?, ?, ?)`).bind(packId, tenantId, value.questionIndex, value.choiceIndex,
-        Number(question.correctIndex === value.choiceIndex), now.toISOString()).run();
-    saved = await env.DB.prepare("SELECT * FROM answers WHERE pack_id = ? AND question_index = ? AND tenant_id = ?")
-      .bind(packId, value.questionIndex, tenantId).first<AnswerRow>();
+    const [, reread] = await env.DB.batch<unknown>([
+      env.DB.prepare(`INSERT OR IGNORE INTO answers (pack_id, tenant_id, question_index, choice_index, correct, answered_at)
+        VALUES (?, ?, ?, ?, ?, ?)`).bind(packId, tenantId, value.questionIndex, value.choiceIndex,
+          Number(question.correctIndex === value.choiceIndex), now.toISOString()),
+      answerQuery]);
+    saved = reread.results[0] as AnswerRow | undefined;
   }
   if (saved?.choice_index !== value.choiceIndex) throw new HttpError(409, "You've already answered this question");
-  return snapshot(env, tenantId, now);
+  return snapshot(env, tenantId, now, prefs);
 }
 export async function agentContext(env: Env, tenantId: string) {
   const state = await snapshot(env, tenantId);

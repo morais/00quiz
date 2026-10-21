@@ -22,7 +22,12 @@ export function migratedD1(before?: string): { db: DatabaseSync; d1: D1Database 
     bind: (...values: Value[]) => statement(sql, values),
     async first<T>(): Promise<T | null> { return (db.prepare(sql).get(...args) as T | undefined) ?? null; },
     async all<T>(): Promise<{ results: T[] }> { return { results: db.prepare(sql).all(...args) as T[] }; },
-    async run() { return { meta: { changes: Number(db.prepare(sql).run(...args).changes) } }; },
+    // Like D1, run() also returns the rows of a statement that reads them.
+    async run() {
+      const prepared = db.prepare(sql);
+      if (prepared.columns().length) return { results: prepared.all(...args), meta: { changes: 0 } };
+      return { results: [], meta: { changes: Number(prepared.run(...args).changes) } };
+    },
   });
   const d1 = {
     prepare: (sql: string) => statement(sql),
