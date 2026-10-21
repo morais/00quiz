@@ -8,7 +8,7 @@ import { dashboard, dashboardLogin, dashboardAppleLogin, dashboardAppleCallback,
 import { openAIAppsChallenge } from "./openAIAppsChallenge";
 import { deleteAccount, signInWithApple, signOut } from "./appAuth";
 import { disconnectMcpConnection, listMcpConnections } from "./mcpConnections";
-import { maybeSweep } from "./cleanup";
+import { sweepExpiredAuthData } from "./cleanup";
 import { signInAllowed, sourceAllowed, tenantAllowed, tooManyRequests } from "./rateLimit";
 import { appleCallback, authChallenge, authorizationServerMetadata, beginAuthorization,
   decideConsent, exchangeCode, protectedResourceMetadata, registerClient, showConsent,
@@ -24,7 +24,7 @@ export default {
       if (path === "/agent-instructions" && (method === "GET" || method === "HEAD")) return serveInstructions(req);
       if (path === "/" || path === "/privacy") return new Response(page(path === "/privacy"), { headers: { "Content-Type": "text/html; charset=utf-8" } });
       if (path.startsWith("/oauth/") || path.startsWith("/auth/") || path === "/v1/auth/apple" || path === "/v1/auth/review" || path === "/v1/auth/delete-account" || path.startsWith("/dashboard/login/")) {
-        if (!(await signInAllowed(env, req))) return tooManyRequests(); maybeSweep(env, ctx);
+        if (!(await signInAllowed(env, req))) return tooManyRequests();
       }
       if ((path === "/.well-known/oauth-protected-resource" || path === "/.well-known/oauth-protected-resource/mcp") && method === "GET") return protectedResourceMetadata(env);
       if (path === "/.well-known/oauth-authorization-server" && method === "GET") return authorizationServerMetadata(env);
@@ -68,6 +68,10 @@ export default {
       }
       return json({ error: "Not found" }, 404);
     } catch (cause) { return apiError(cause); }
+  },
+  // The daily cron in wrangler.toml; a failed sweep shows as a failed cron run.
+  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+    await sweepExpiredAuthData(env);
   },
 };
 

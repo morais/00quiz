@@ -57,6 +57,11 @@ namespace_id = "23003"
   limit = 300
   period = 60
 
+# Daily sweep of expired OAuth flows, codes, and credentials. Workers Free
+# allows five crons per account; Paid allows 250.
+[triggers]
+crons = ["17 4 * * *"]
+
 # Run the Worker near the D1 primary when that makes requests faster: every
 # request makes several sequential database calls.
 [placement]
