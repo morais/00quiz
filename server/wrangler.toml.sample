@@ -62,5 +62,11 @@ namespace_id = "23003"
 [placement]
 mode = "smart"
 
+# Workers Paid only: cap CPU per request well below the 30 s default, so a
+# runaway or abusive request cannot run up the bill. Normal requests use a few
+# milliseconds. Check p99 CPU in the dashboard before lowering this.
+# [limits]
+# cpu_ms = 500
+
 [observability]
 enabled = true
