@@ -72,8 +72,9 @@ export async function snapshot(env: Env, tenantId: string, now = new Date(), kno
     env.DB.prepare(`SELECT p.*, f.message AS feedback_message, f.updated_at AS feedback_updated_at
       FROM quiz_packs p LEFT JOIN quiz_feedback f ON f.pack_id = p.id AND f.tenant_id = p.tenant_id
       WHERE p.tenant_id = ? AND p.day <= ? ORDER BY p.day DESC LIMIT 90`).bind(tenantId, today),
-    env.DB.prepare(`SELECT a.* FROM answers a JOIN quiz_packs p ON p.id = a.pack_id
-      WHERE a.tenant_id = ? AND p.day <= ? ORDER BY p.day DESC LIMIT 450`).bind(tenantId, today),
+    // Only the answers for the packs above, so reads stay flat as history grows.
+    env.DB.prepare(`SELECT * FROM answers WHERE tenant_id = ? AND pack_id IN
+      (SELECT id FROM quiz_packs WHERE tenant_id = ? AND day <= ? ORDER BY day DESC LIMIT 90)`).bind(tenantId, tenantId, today),
     env.DB.prepare(`SELECT p.day, COUNT(a.question_index) AS answered FROM quiz_packs p
       LEFT JOIN answers a ON a.pack_id = p.id WHERE p.tenant_id = ? AND p.day <= ? GROUP BY p.id ORDER BY p.day`).bind(tenantId, today),
   ]);

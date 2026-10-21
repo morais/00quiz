@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { migratedD1 } from "./d1";
 import { agentContext, body, preferences, publishPack, snapshot, submitAnswer, updatePreferences, type Env } from "../src/api";
 import { authenticate, issueCredential, type Principal } from "../src/auth";
-import { PackInput, dateInZone, streaks } from "../src/model";
+import { PackInput, addDays, dateInZone, streaks } from "../src/model";
 import { routeMcp } from "../src/mcp";
 
 const open: Array<{ close: () => void }> = [];
@@ -65,6 +65,19 @@ describe("daily quiz integrity", () => {
     await submitAnswer(env, "one", published.id, { questionIndex: 0, choiceIndex: 0 }, tomorrow);
     await expect(submitAnswer(env, "one", published.id, { questionIndex: 1, choiceIndex: 0 }, tomorrow)).rejects.toMatchObject({ status: 409 });
     expect((await snapshot(env, "one", tomorrow)).history[0].questions[1].correctIndex).toBe(1);
+  });
+  it("returns the latest 90 packs with their answers", async () => {
+    const { db, env } = setup();
+    const questions = JSON.stringify(pack().questions);
+    for (let i = 0; i < 95; i++) {
+      const day = addDays("2026-10-17", -i);
+      db.prepare("INSERT INTO quiz_packs VALUES (?, 'one', ?, 'Old', 'Hello', ?, ?)").run(`pack-${i}`, day, questions, now.toISOString());
+      db.prepare("INSERT INTO answers VALUES (?, 'one', 0, ?, 1, ?)").run(`pack-${i}`, i % 4, `${day}T09:00:00Z`);
+    }
+    const state = await snapshot(env, "one", now);
+    expect(state.history).toHaveLength(89);
+    expect([state.quiz!, ...state.history].map(p => p.questions[0].answer?.choiceIndex)).toEqual(Array.from({ length: 90 }, (_, i) => i % 4));
+    expect(state.streak).toEqual({ current: 0, longest: 0, completedDays: 0 });
   });
   it("keeps optional preferences empty until set and preserves omitted values", async () => {
     const { env } = setup();
