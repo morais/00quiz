@@ -181,7 +181,6 @@ struct AgentSetupView: View {
             if let errorText { Section { Text(errorText).foregroundStyle(.red) } }
         }
         .navigationTitle("Your agent")
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { DoneIfPresented() } }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
             await load()
@@ -220,12 +219,6 @@ struct MCPConnectionRow: View {
             .accessibilityLabel("Disconnect \(connection.clientName)")
         }
     }
-}
-
-private struct DoneIfPresented: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.isPresented) private var isPresented
-    var body: some View { if isPresented { Button("Done") { dismiss() } } }
 }
 
 struct ReminderView: View {

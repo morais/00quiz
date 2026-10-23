@@ -123,7 +123,12 @@ struct TodayView: View {
         .navigationTitle("00Quiz").navigationBarTitleDisplayMode(.inline)
         .refreshable { await store.refresh() }
         .sheet(item: $playingQuiz) { quiz in NavigationStack { QuizPlayView(packID: quiz.id) } }
-        .sheet(isPresented: $setup) { NavigationStack { AgentSetupView() } }
+        .sheet(isPresented: $setup) {
+            NavigationStack {
+                AgentSetupView()
+                    .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { setup = false } } }
+            }
+        }
     }
 }
 
