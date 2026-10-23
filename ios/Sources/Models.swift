@@ -51,6 +51,10 @@ enum AppBrand {
     static let name = "00Quiz"
     static let server = URL(string: Bundle.main.object(forInfoDictionaryKey: "QuizServerBaseURL") as? String ?? "https://api.00quiz.com")!
     static var endpoint: String { server.appending(path: "mcp").absoluteString }
+    static var chatGPTPluginURL: URL? {
+        server.host() == "api.00quiz.com"
+            ? URL(string: "https://chatgpt.com/plugins/plugin_asdk_app_6ad8aaae6cbc8191b9b1dad69f643593") : nil
+    }
     /// Redirects on the website to Claude's prefilled add-connector screen, or to the
     /// directory listing once published. It connects production only, so other servers hide it.
     static var claudeConnectURL: URL? {

@@ -1,6 +1,6 @@
 # Bring your own quiz host
 
-1. In a remote-MCP-compatible agent, add `https://api.00quiz.com/mcp`.
+1. In ChatGPT, add the [00Quiz plugin](https://chatgpt.com/plugins/plugin_asdk_app_6ad8aaae6cbc8191b9b1dad69f643593). For another remote-MCP-compatible agent, add `https://api.00quiz.com/mcp`.
 2. Sign in with the same Apple account as the iPhone app and approve quiz access.
 3. Ask the agent to read `get_quiz_instructions` and prepare today's quiz following that guidance.
 4. Ask that agent to create a recurring morning task. Connecting MCP and scheduling a task are separate actions. Confirm that its scheduler can call MCP tools without an open conversation; compatibility varies by agent. If it cannot, you can request quizzes manually or use a compatible scheduler.

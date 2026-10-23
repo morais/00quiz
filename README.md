@@ -6,6 +6,8 @@ Website: [00quiz.com](https://00quiz.com) · [Support](https://00quiz.com/suppor
 
 00Quiz is a native iPhone quiz app whose question source is your own MCP agent. Connect an agent, ask it to choose your first questions, and schedule a daily task in that agent. Every morning it reads your interests and performance, then publishes five multiple-choice questions and a friendly host message. There is no bundled AI provider, API key requirement, or automatic question generator inside the app.
 
+Using ChatGPT? Add the [00Quiz plugin](https://chatgpt.com/plugins/plugin_asdk_app_6ad8aaae6cbc8191b9b1dad69f643593). The app’s **Your agent** setup includes the same link; authorize the same Apple account you use in the app, then ask ChatGPT to prepare your quiz and set up the recurring task.
+
 The implementation follows sibling projects 00Todo and 00Food: SwiftUI, a Cloudflare Worker with D1, native Sign in with Apple, separate app/MCP credentials, and remote MCP OAuth with Apple web sign-in and explicit consent.
 
 - Exactly five questions per published local calendar day, four choices each, one attempt per question. Correct answers, explanations and optional HTTPS sources appear after answering. Past quizzes reveal their explanations for review.
