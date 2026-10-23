@@ -36,6 +36,12 @@ with Image.open(MASTER) as source:
             filename = f"app-icon-{points}@{scale}x.png"
             artwork.resize((points * scale, points * scale), Image.Resampling.LANCZOS).save(icon_dir / filename)
             images.append({"filename": filename, "idiom": "iphone", "size": f"{points}x{points}", "scale": f"{scale}x"})
+    for points, scales in ((20, (1, 2)), (29, (1, 2)), (40, (1, 2)), (76, (1, 2)), (83.5, (2,))):
+        for scale in scales:
+            filename = f"app-icon-{points}@{scale}x.png"
+            pixels = int(points * scale)
+            artwork.resize((pixels, pixels), Image.Resampling.LANCZOS).save(icon_dir / filename)
+            images.append({"filename": filename, "idiom": "ipad", "size": f"{points}x{points}", "scale": f"{scale}x"})
     artwork.resize((1024, 1024), Image.Resampling.LANCZOS).save(icon_dir / "app-icon.png")
     images.append({"filename": "app-icon.png", "idiom": "ios-marketing", "size": "1024x1024", "scale": "1x"})
     write_catalog(icon_dir, images)
@@ -45,4 +51,4 @@ with Image.open(MASTER) as source:
     artwork.resize((512, 512), Image.Resampling.LANCZOS).save(mark_dir / "brand-mark.png")
     write_catalog(mark_dir, [{"filename": "brand-mark.png", "idiom": "universal"}])
 
-print("Packaged approved 00Quiz option 2: eight iPhone renditions, App Store icon and in-app mark")
+print("Packaged approved 00Quiz option 2: iPhone and iPad renditions, App Store icon and in-app mark")
