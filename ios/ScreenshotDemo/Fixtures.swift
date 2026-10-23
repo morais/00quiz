@@ -55,6 +55,11 @@ enum ScreenshotFixtures {
     @MainActor static func configure(_ store: QuizStore) {
         store.snapshot = snapshot()
         store.isSignedIn = true; store.isDemo = false
-        store.connections = []
+        store.connections = ["setup", "connections"].contains(scene) ? [
+            MCPConnection(id: "sample-chatgpt", clientName: "ChatGPT", scopes: ["quiz:read", "quiz:write"],
+                          connectedAt: "2026-10-17T07:00:00Z", lastUsedAt: nil, expiresAt: "2027-10-17T07:00:00Z"),
+            MCPConnection(id: "sample-claude", clientName: "Claude", scopes: ["quiz:read", "quiz:write"],
+                          connectedAt: "2026-10-17T07:00:00Z", lastUsedAt: nil, expiresAt: "2027-10-17T07:00:00Z"),
+        ] : []
     }
 }

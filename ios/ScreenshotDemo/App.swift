@@ -11,12 +11,22 @@ import SwiftUI
                 case "friend": NavigationStack { FriendQuizView(session: ScreenshotFixtures.friendSession()) }
                 case "preferences": NavigationStack { PreferencesView() }
                 case "setup": NavigationStack { AgentSetupView() }
+                case "connections": NavigationStack {
+                    List {
+                        Section("Connected agents") {
+                            ForEach(store.connections) { connection in
+                                MCPConnectionRow(connection: connection, onDisconnect: {})
+                            }
+                        }
+                    }.navigationTitle("Your agent")
+                }
+                case "onboarding": OnboardingView(onCompleted: {})
                 case "sign-in": SignInView()
                 default: ContentView()
                 }
             }
             .environment(store).tint(QuizStyle.green)
-            .preferredColorScheme(.light)
+            .preferredColorScheme(ProcessInfo.processInfo.arguments.contains("--dark") ? .dark : .light)
         }
     }
 }

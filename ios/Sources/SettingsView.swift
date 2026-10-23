@@ -138,58 +138,44 @@ struct AgentSetupView: View {
     @State private var copied = false
     @State private var errorText: String?
     @State private var removing: MCPConnection?
-    private var setupPrompt: String {
-        """
-        Connect to 00Quiz at \(AppBrand.endpoint). Follow get_quiz_instructions to prepare today's quiz, then do so every morning at 7:00 in my quiz time zone. Check get_quiz_context each run and reread the guidance when agentInstructions.version changes.
-        """
-    }
+    private let setupPrompt = "Prepare today’s 00Quiz, then do it again every morning at 7:00."
     var body: some View {
         List {
             Section {
                 Label("Your agent is your quiz host", systemImage: "mic.fill").font(.headline)
-                Text("Use an agent that supports remote MCP with OAuth and scheduled tool calls. Connect it to 00Quiz, then give it the instructions below. Connecting and scheduling are separate steps.")
+                Text("Connect your agent to 00Quiz, then give it the request below. Connecting and scheduling are separate steps.")
             }
             Section("1 · Connect") {
                 if let url = AppBrand.chatGPTPluginURL {
                     Link(destination: url) { Label("Add to ChatGPT", systemImage: "arrow.up.forward.app") }
-                    Text("Opens the 00Quiz plugin in ChatGPT. Sign in with the same Apple account you use in 00Quiz, then return here to set up your morning task.")
+                    Text("Opens the 00Quiz plugin in ChatGPT. Sign in with the same Apple account you use in 00Quiz.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 if let url = AppBrand.claudeConnectURL {
                     Link(destination: url) { Label("Add to Claude", systemImage: "arrow.up.forward.app") }
-                    Text("Opens Claude with 00Quiz ready to add.")
+                    Text("Opens Claude with 00Quiz ready to add. Sign in with the same Apple account you use in 00Quiz.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
-                Text("Using another agent? Add its remote MCP connection with the address below.")
-                    .font(.footnote).foregroundStyle(.secondary)
-                Text(AppBrand.endpoint).font(.callout.monospaced()).textSelection(.enabled)
-                Button("Copy MCP address", systemImage: "doc.on.doc") { UIPasteboard.general.string = AppBrand.endpoint }
-                Text("Add this address in your agent’s MCP integrations. Sign in with the same Apple account you use here, then approve its quiz access.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                DisclosureGroup("Using another agent?") {
+                    Text(AppBrand.endpoint).font(.callout.monospaced()).textSelection(.enabled)
+                    Button("Copy MCP address", systemImage: "doc.on.doc") { UIPasteboard.general.string = AppBrand.endpoint }
+                    Text("Use an agent that supports remote MCP with OAuth and scheduled tool calls. Add this address in its MCP integrations. Sign in with the same Apple account you use in 00Quiz, then approve its quiz access.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
             }
             Section("2 · Set the daily show in motion") {
-                Text("The starting schedule is 7 a.m. in your quiz time zone. You can ask your agent for a different time.")
-                Button(copied ? "Instructions copied" : "Copy agent instructions", systemImage: copied ? "checkmark" : "doc.on.doc") {
+                Text("Tell your agent “\(setupPrompt)”")
+                Button(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc") {
                     UIPasteboard.general.string = setupPrompt; copied = true
                 }
-                Text("Paste them into your agent. Its recurring task will read your progress and publish new questions each morning. 00Quiz itself does not generate questions or run that task.")
-                    .font(.footnote).foregroundStyle(.secondary)
-                DisclosureGroup("Read the instructions") { Text(setupPrompt).font(.footnote).textSelection(.enabled) }
             }
             Section("Connected agents") {
                 if store.isDemo { Text("Connections are unavailable in demo mode.").foregroundStyle(.secondary) }
                 else if store.connections.isEmpty { Text("No active MCP connections yet.").foregroundStyle(.secondary) }
                 ForEach(store.connections) { connection in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(connection.clientName).font(.headline)
-                        Text("Expires \(dayLabel(String(connection.expiresAt.prefix(10))))").font(.caption).foregroundStyle(.secondary)
-                        Button(role: .destructive) { removing = connection } label: {
-                            Text("Disconnect").quizTapTarget(alignment: .leading)
-                        }
-                    }.padding(.vertical, 5)
+                    MCPConnectionRow(connection: connection) { removing = connection }
                 }
-                Button("Refresh connections") { Task { await load() } }
-                Text("This list confirms MCP access. Your agent manages and confirms its own recurring schedule. New connections last one year. Existing connections keep the expiry shown above; reconnect when your agent asks. You can disconnect at any time.")
+                Text("This list confirms MCP access. Your agent manages and confirms its own recurring schedule.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             if let errorText { Section { Text(errorText).foregroundStyle(.red) } }
@@ -212,6 +198,27 @@ struct AgentSetupView: View {
         catch is CancellationError {}
         catch let error as URLError where error.code == .cancelled {}
         catch { errorText = error.localizedDescription }
+    }
+}
+
+struct MCPConnectionRow: View {
+    let connection: MCPConnection
+    let onDisconnect: () -> Void
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(connection.clientName).font(.headline)
+                Text("Expires \(dayLabel(String(connection.expiresAt.prefix(10))))").font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Button(role: .destructive, action: onDisconnect) {
+                Text("Disconnect").quizTapTarget(alignment: .trailing)
+            }
+            .buttonStyle(.borderless)
+            .fixedSize(horizontal: true, vertical: false)
+            .accessibilityLabel("Disconnect \(connection.clientName)")
+        }
     }
 }
 

@@ -5,9 +5,11 @@
 3. Ask the agent to read `get_quiz_instructions` and prepare today's quiz following that guidance.
 4. Ask that agent to create a recurring morning task. Connecting MCP and scheduling a task are separate actions. Confirm that its scheduler can call MCP tools without an open conversation; compatibility varies by agent. If it cannot, you can request quizzes manually or use a compatible scheduler.
 
-Suggested instructions:
+Tell your agent:
 
-> Connect to 00Quiz at https://api.00quiz.com/mcp. Follow get_quiz_instructions to prepare today's quiz, then do so every morning at 7:00 in my quiz time zone. Check get_quiz_context each run and reread the guidance when agentInstructions.version changes.
+> Prepare today’s 00Quiz, then do it again every morning at 7:00.
+
+The app’s **Copy** button copies only this sentence. The MCP address and connection details for other agents are inside **Using another agent?**. The connected-agent list refreshes when this screen opens or the app becomes active.
 
 The guidance is maintained on the backend in `server/src/agentInstructions.ts`. The agent gets its current version, URL and MCP tool name with every `get_quiz_context` response. It should read the full document on its first run and whenever that version changes. If it cannot retain guidance between runs, it should read it each time. The version is a hash of the document and changes automatically when guidance is edited and deployed; no app update or replacement setup prompt is needed for those edits.
 
