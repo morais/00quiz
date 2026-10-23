@@ -38,7 +38,7 @@ export async function sendNewTenantAlert(env: Env, alert: NewTenantAlert): Promi
   // Must be an address on a domain this account has Email Routing configured
   // for; Cloudflare rejects anything else at send time.
   const from = env.SIGNUP_ALERT_FROM?.trim() || to;
-  const appName = env.APP_NAME?.trim() || "Todo";
+  const appName = env.APP_NAME?.trim() || "00Quiz";
 
   try {
     // Imported dynamically rather than at module scope: `cloudflare:email` only

@@ -80,3 +80,9 @@ Reviewer operator scripts resolve credentials outside this public checkout, defa
 New MCP OAuth grants last 365 days, supporting recurring daily quiz tasks. Native app sessions remain 90 days. Both are fixed expirations; this server does not issue refresh tokens. The OAuth `expires_in` value matches the stored deadline. Revocation and account deletion still end access immediately. Existing grants keep the expiry their client was originally given; reconnect once to obtain the longer lifetime. No migration extends older grants or revives expired/revoked credentials.
 
 For comparison, the current sibling 00Todo and 00Food implementations both issue 30-day MCP grants and 90-day app sessions; they do not currently use a longer MCP lifetime.
+
+## New-account email alerts
+
+The operator can receive an email when Sign in with Apple creates a new account through the native app, an MCP connection or the web dashboard. This follows 00Todo’s Cloudflare Email Routing pattern: set `SIGNUP_ALERT_TO`, `SIGNUP_ALERT_FROM` and a `SIGNUP_ALERTS` send-email binding restricted to that verified destination in the ignored deployment configuration. The sender must belong to an onboarded domain in the same account. The sample configuration keeps this opt-in.
+
+Only the successful insert sends a notification; repeated sign-ins, connecting another agent to an existing account and synthetic reviewer logins do not create another alert. Delivery runs with `ctx.waitUntil` after the response. Email failures are logged and never reject the signup. Notifications include the signup surface, any email Apple supplied (possibly a relay address), tenant ID and creation time; they contain no credentials.

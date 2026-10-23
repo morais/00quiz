@@ -25,6 +25,15 @@ APPLE_KEY_ID = "REPLACE_WITH_SIGN_IN_WITH_APPLE_KEY_ID"
 # OpenAI supplies this exact public ownership challenge during portal setup:
 # OPENAI_APPS_CHALLENGE_TOKEN = "REPLACE_WITH_PORTAL_CHALLENGE"
 
+# Optional signup email, using a verified Cloudflare Email Routing destination.
+# Set these under [vars]; the sender must use an onboarded domain you control.
+# SIGNUP_ALERT_TO = "you@example.com"
+# SIGNUP_ALERT_FROM = "alerts@example.com"
+# Enable the restricted binding below only after setting up Email Routing:
+# [[send_email]]
+# name = "SIGNUP_ALERTS"
+# destination_address = "you@example.com"
+
 [[routes]]
 pattern = "api.example.com"
 custom_domain = true
