@@ -11,9 +11,9 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
-    TARGETED_DEVICE_FAMILY: "1"
+    TARGETED_DEVICE_FAMILY: "1,2"
     SUPPORTS_MACCATALYST: "NO"
-    SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
+    SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "YES"
     SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: "NO"
 targets:
   ZeroZeroQuiz:
@@ -32,6 +32,11 @@ targets:
         QuizServerBaseURL: https://api.example.com
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
@@ -43,7 +48,7 @@ targets:
           - Default
     settings:
       base:
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         PRODUCT_BUNDLE_IDENTIFIER: com.example.zerozeroquiz
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor

@@ -1,6 +1,6 @@
-# 00Quiz for iPhone
+# 00Quiz for iPhone and iPad
 
-SwiftUI, iOS 27+. Xcode and XcodeGen are required. Copy `project.yml.sample` to ignored `project.yml`, supply your Apple team, bundle ID and API origin, then run `xcodegen generate`.
+SwiftUI, iOS/iPadOS 27+. Xcode and XcodeGen are required. Copy `project.yml.sample` to ignored `project.yml`, supply your Apple team, bundle ID and API origin, then run `xcodegen generate`.
 
 For a simulator build:
 
@@ -49,3 +49,7 @@ See `../docs/appstore/README.md` for the prepared listing and validation record.
 From the repository root, `python3 ios/scripts/upload-appstore-screenshots.py --app-id APP_ID` uploads and verifies the screenshot list in `docs/appstore/metadata.json`. It uses the same credential setup as the Apple API helper, skips identical complete assets and never submits an app for review.
 
 The sign-in screen’s **Reviewer access** accepts the code supplied through App Store Connect’s secure password field. It exchanges the code with the backend and stores only the resulting app session in Keychain. The clearly labelled synthetic account can exercise live quiz APIs and restart its sample day. Personal accounts still use Sign in with Apple and fresh Apple authentication for deletion. See `../server/README.md` for provisioning and security boundaries.
+
+## Mac windows
+
+The app targets both iPhone and iPad and permits running the iOS app on Apple silicon Macs. iPad multitasking is enabled (no `UIRequiresFullScreen`), with all four iPad orientations, so macOS can resize the window rather than use the fixed-size iPhone presentation. This is the iOS app running on Mac; no Catalyst target is needed. The existing layouts scroll and keep quiz text to a readable width. See [Apple’s adaptation guidance](https://developer.apple.com/documentation/apple-silicon/adapting-ios-code-to-run-in-the-macos-environment).
