@@ -19,6 +19,6 @@ Published quizzes are immutable. An identical retry is safe. Agents can prepare 
 
 You can edit/clear interests, language and difficulty in the app. Preferences are optional. The agent can see recent questions, chosen answers and results after authorization, helping it adapt difficulty and review missed concepts. Agents cannot submit answers for you.
 
-Use Settings → Your agent to see connection expiration and revoke access. Connection status does not prove a recurring task exists; check the schedule in your agent. Reconnect when a grant expires. Optional iPhone reminders are independent of the agent's schedule.
+Use Settings → Your agent to see connection expiration and revoke access. New MCP connections last 365 days; existing connections retain their original expiry until reauthorized. Access can be revoked at any time. Connection status does not prove a recurring task exists; check the schedule in your agent. Reconnect when a grant expires. Optional iPhone reminders are independent of the agent's schedule.
 
 The hosted guidance requires general-audience questions, choices, explanations, host messages and source links. Interests and difficulty do not override its content limits. Connected agents discover updated limits through the same content-derived instructions version.

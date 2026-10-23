@@ -101,7 +101,9 @@ export async function issueCredential(
   const tokenHash = await sha256Hex(token);
   const id = crypto.randomUUID();
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + (kind === "app" ? 90 : 30) * 86400000).toISOString();
+  // Daily agent tasks need durable authorization. Existing grants keep the
+  // expiry already advertised to their client; only new MCP grants get a year.
+  const expiresAt = new Date(now.getTime() + (kind === "app" ? 90 : 365) * 86400000).toISOString();
   await env.DB.prepare(`INSERT INTO credentials
     (id, token_hash, tenant_id, kind, audience, scopes, label, created_at, expires_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(

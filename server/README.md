@@ -74,3 +74,9 @@ Run `node scripts/provision-review.mjs --plugin` to provision the separate synth
 For portal domain verification, set the portal’s exact `OPENAI_APPS_CHALLENGE_TOKEN` in ignored Wrangler variables. `GET /.well-known/openai-apps-challenge` returns only that token as uncached plain text; HEAD has no body, the route is 404 while unset, and there is no trailing-slash alias. Do not invent a token or report ownership verified until OpenAI confirms it.
 
 Reviewer operator scripts resolve credentials outside this public checkout, defaulting to the private sibling `00quiz-www/.private/reviewer-access/`. Set `QUIZ_REVIEW_ACCESS_DIR` for another private operator directory. Provisioning refuses paths inside this checkout and writes owner-only files. Submission-specific reset and smoke scripts live in `00quiz-www/plugin-submission/scripts/`.
+
+## Credential lifetimes
+
+New MCP OAuth grants last 365 days, supporting recurring daily quiz tasks. Native app sessions remain 90 days. Both are fixed expirations; this server does not issue refresh tokens. The OAuth `expires_in` value matches the stored deadline. Revocation and account deletion still end access immediately. Existing grants keep the expiry their client was originally given; reconnect once to obtain the longer lifetime. No migration extends older grants or revives expired/revoked credentials.
+
+For comparison, the current sibling 00Todo and 00Food implementations both issue 30-day MCP grants and 90-day app sessions; they do not currently use a longer MCP lifetime.

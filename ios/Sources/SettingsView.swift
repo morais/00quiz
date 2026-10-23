@@ -189,7 +189,7 @@ struct AgentSetupView: View {
                     }.padding(.vertical, 5)
                 }
                 Button("Refresh connections") { Task { await load() } }
-                Text("This list confirms MCP access. Your agent manages and confirms its own recurring schedule. Connections expire; reconnect when your agent asks.")
+                Text("This list confirms MCP access. Your agent manages and confirms its own recurring schedule. New connections last one year. Existing connections keep the expiry shown above; reconnect when your agent asks. You can disconnect at any time.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
             if let errorText { Section { Text(errorText).foregroundStyle(.red) } }
