@@ -53,3 +53,14 @@ The sign-in screen’s **Reviewer access** accepts the code supplied through App
 ## Mac windows
 
 The app targets both iPhone and iPad and permits running the iOS app on Apple silicon Macs. iPad multitasking is enabled (no `UIRequiresFullScreen`), with all four iPad orientations, so macOS can resize the window rather than use the fixed-size iPhone presentation. This is the iOS app running on Mac; no Catalyst target is needed. The existing layouts scroll and keep quiz text to a readable width. See [Apple’s adaptation guidance](https://developer.apple.com/documentation/apple-silicon/adapting-ios-code-to-run-in-the-macos-environment).
+
+## Developer onboarding replay
+
+Tap the version row in Settings to open Developer, then enable **Replay onboarding on next launch**. As in 00Food, the request is consumed once when the app process starts; switching tabs or returning from the background does not trigger it. Quit and reopen the app. The welcome flow leads into the normal agent setup and can be skipped without touching the account, quiz progress, preferences or connections. First-time users see the same welcome after signing in; existing signed-in installs skip it unless replay was requested.
+
+Verify replay state from `ios/` without a simulator:
+
+```sh
+swiftc Sources/OnboardingState.swift Tests/OnboardingStateTests.swift -o /tmp/00quiz-onboarding-tests
+/tmp/00quiz-onboarding-tests
+```

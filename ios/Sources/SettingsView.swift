@@ -7,6 +7,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var deleteAccount = false
     @State private var resettingSamples = false
+    @State private var showingDeveloper = false
     var body: some View {
         List {
             Section {
@@ -18,7 +19,11 @@ struct SettingsView: View {
                 Text("Your agent sets the stage. You bring the curiosity.").foregroundStyle(.secondary)
                 Link("Privacy", destination: AppBrand.server.appending(path: "privacy"))
                 Link("Support", destination: URL(string: "https://00quiz.com/support")!)
-                LabeledContent("Version", value: "\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"))")
+                Button { showingDeveloper = true } label: {
+                    LabeledContent("Version", value: "\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"))")
+                        .quizTapTarget(alignment: .leading)
+                }
+                .buttonStyle(.plain)
             }
             Section {
                 Button(store.isDemo ? "Leave demo" : store.isReviewAccount ? "Leave sample account" : "Sign out") { Task { await store.signOut(); if !store.isSignedIn { dismiss() } } }
@@ -43,6 +48,26 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         .sheet(isPresented: $deleteAccount) { DeleteAccountView() }
+        .sheet(isPresented: $showingDeveloper) { DeveloperView() }
+    }
+}
+
+private struct DeveloperView: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage(OnboardingReplay.requestKey) private var replayOnNextLaunch = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Toggle("Replay onboarding on next launch", isOn: $replayOnNextLaunch)
+                } header: { Text("Onboarding") } footer: {
+                    Text("Quit and reopen 00Quiz to see the welcome and agent setup again. Your account, questions, scores, streak and preferences are kept. The switch resets after launch.")
+                }
+            }
+            .navigationTitle("Developer")
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
+        }
     }
 }
 
