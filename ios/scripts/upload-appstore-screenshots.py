@@ -36,18 +36,23 @@ def main():
     version = next(x for x in versions if x["attributes"]["platform"] == "IOS" and x["attributes"]["versionString"] == metadata["version"])
     locales = api("GET", f"/v1/appStoreVersions/{version['id']}/appStoreVersionLocalizations")["data"]
     locale = next(x for x in locales if x["attributes"]["locale"] == metadata["locale"])
-    sets = api("GET", f"/v1/appStoreVersionLocalizations/{locale['id']}/appScreenshotSets")["data"]
+    for screenshot_set in metadata.get("screenshotSets", [metadata]):
+        upload_set(args.metadata.parent, locale["id"], screenshot_set)
+
+
+def upload_set(metadata_dir, locale_id, metadata):
+    sets = api("GET", f"/v1/appStoreVersionLocalizations/{locale_id}/appScreenshotSets")["data"]
     target = next((x for x in sets if x["attributes"]["screenshotDisplayType"] == metadata["screenshotDisplayType"]), None)
     if not target:
         target = api("POST", "/v1/appScreenshotSets", {"data": {"type": "appScreenshotSets",
             "attributes": {"screenshotDisplayType": metadata["screenshotDisplayType"]},
-            "relationships": {"appStoreVersionLocalization": {"data": {"type": "appStoreVersionLocalizations", "id": locale["id"]}}}}})["data"]
+            "relationships": {"appStoreVersionLocalization": {"data": {"type": "appStoreVersionLocalizations", "id": locale_id}}}}})["data"]
     set_id = target["id"]
     collection = f"/v1/appScreenshotSets/{set_id}/appScreenshots"
     existing = {x["attributes"]["fileName"]: x for x in api("GET", collection)["data"]}
     ordered = []
     for filename in metadata["screenshots"]:
-        path = args.metadata.parent / "screenshots" / filename
+        path = metadata_dir / metadata.get("directory", "screenshots") / filename
         data = path.read_bytes(); checksum = hashlib.md5(data).hexdigest()
         old = existing.get(filename)
         if old and old["attributes"].get("sourceFileChecksum") == checksum:

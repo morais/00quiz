@@ -1,6 +1,26 @@
 # 00Quiz App Store preparation
 
-Version 1.0 was prepared on October 17, 2026 for [App Store Connect](https://appstoreconnect.apple.com/apps/6823917960/distribution/ios/version/inflight). The app and its review draft are **Ready for Review**, with no submitted date. **It has not been submitted to App Review.**
+Version **1.1 (202610231738)** was prepared on October 23, 2026 in [App Store Connect](https://appstoreconnect.apple.com/apps/6823917960/distribution/ios/version/inflight). Apple reports the version, review item and review draft as **READY_FOR_REVIEW**, with no submitted date. **Version 1.1 has not been submitted to App Review.** Version 1.0 is already released.
+
+## Version 1.1 handoff
+
+| Item | Verified configuration |
+| --- | --- |
+| Build | Signed universal iPhone/iPad archive; Apple processing VALID; selected for version 1.1 |
+| TestFlight | Internal group assigned; IN_BETA_TESTING; automatic tester notifications and Apple silicon Mac testing enabled |
+| Navigation fix | Agent setup shows one Done button in onboarding; the onboarding action completes the flow, while standalone setup retains its own dismiss action |
+| Screenshots | Six existing opaque 1320 × 2868 iPhone captures in `APP_IPHONE_67`, plus six new opaque 2064 × 2752 native iPad Pro 13-inch captures in `APP_IPAD_PRO_3GEN_129`; all twelve COMPLETE |
+| Listing | English (US) description, version 1.1 release notes and review walkthrough updated; text and ordered screenshot sets in `metadata.json` |
+| Reviewer | Existing dedicated demo account and review contact verified present; secure fields retained in App Store Connect |
+| Release | Manual release after approval; review draft remains unsubmitted |
+
+The iPad captures use the shipping SwiftUI views, with fictional data in the isolated universal screenshot app. Each capture was visually inspected and checked for native resolution and opacity. They are stored in `screenshots/ipad`, following [Apple's screenshot requirements](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/). The upload script verifies both screenshot sets and skips matching existing assets.
+
+Validation for this update: simulator Debug build, signed Release archive and App Store export passed; the second onboarding screen was rendered with a single Done button. Apple API checks verified the selected build, screenshot order and processing, release text, export-compliance declaration, review contact, dedicated reviewer account and unsubmitted review draft. The final submission is left to the user.
+
+## Historical version 1.0 preparation
+
+The following records the October 17, 2026 preparation and handoff, before version 1.0 was submitted and released. Its readiness and platform details describe that earlier build.
 
 ## Prepared release
 

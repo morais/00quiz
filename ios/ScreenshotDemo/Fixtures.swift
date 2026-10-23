@@ -1,7 +1,7 @@
 import Foundation
 
 enum ScreenshotFixtures {
-    static let now = ISO8601DateFormatter().date(from: "2026-10-17T09:41:00Z")!
+    static let now = ISO8601DateFormatter().date(from: "2026-10-23T09:41:00Z")!
     static var scene: String {
         let args = ProcessInfo.processInfo.arguments
         guard let index = args.firstIndex(of: "--scene"), args.indices.contains(index + 1) else { return "today" }
@@ -19,12 +19,12 @@ enum ScreenshotFixtures {
         for (offset, score) in [(1, 4), (2, 5), (3, 3), (4, 4)] {
             let day = ISO8601DateFormatter().string(from: now.addingTimeInterval(Double(-offset) * 86400)).prefix(10)
             let titles = ["The everyday, explained", "Out of this world", "Small things, big ideas", "A curious mix"]
-            state.history.append(complete(DailyQuiz(id: "history-\(offset)", day: String(day), title: titles[offset - 1], hostMessage: "A little curiosity goes a long way.", createdAt: "2026-10-17T07:00:00Z", completed: false, score: 0, questions: state.quiz!.questions), score: score))
+            state.history.append(complete(DailyQuiz(id: "history-\(offset)", day: String(day), title: titles[offset - 1], hostMessage: "A little curiosity goes a long way.", createdAt: "2026-10-23T07:00:00Z", completed: false, score: 0, questions: state.quiz!.questions), score: score))
         }
         if scene == "explanation" {
             state.quiz?.questions[0].correctIndex = DemoData.keys[0]
             state.quiz?.questions[0].explanation = DemoData.explanations[0]
-            state.quiz?.questions[0].answer = QuizAnswer(choiceIndex: DemoData.keys[0], correct: true, answeredAt: "2026-10-17T09:41:00Z")
+            state.quiz?.questions[0].answer = QuizAnswer(choiceIndex: DemoData.keys[0], correct: true, answeredAt: "2026-10-23T09:41:00Z")
             state.quiz?.score = 1
         }
         if scene == "completed" || scene == "friend" { state.quiz = complete(state.quiz!, score: 4) }
@@ -39,7 +39,7 @@ enum ScreenshotFixtures {
             let correct = index < score
             quiz.questions[index].correctIndex = key
             quiz.questions[index].explanation = DemoData.explanations[index]
-            quiz.questions[index].answer = QuizAnswer(choiceIndex: correct ? key : (key + 1) % 4, correct: correct, answeredAt: "2026-10-17T09:41:00Z")
+            quiz.questions[index].answer = QuizAnswer(choiceIndex: correct ? key : (key + 1) % 4, correct: correct, answeredAt: "2026-10-23T09:41:00Z")
         }
         return quiz
     }
@@ -57,9 +57,9 @@ enum ScreenshotFixtures {
         store.isSignedIn = true; store.isDemo = false
         store.connections = ["setup", "connections"].contains(scene) ? [
             MCPConnection(id: "sample-chatgpt", clientName: "ChatGPT", scopes: ["quiz:read", "quiz:write"],
-                          connectedAt: "2026-10-17T07:00:00Z", lastUsedAt: nil, expiresAt: "2027-10-17T07:00:00Z"),
+                          connectedAt: "2026-10-23T07:00:00Z", lastUsedAt: nil, expiresAt: "2027-10-17T07:00:00Z"),
             MCPConnection(id: "sample-claude", clientName: "Claude", scopes: ["quiz:read", "quiz:write"],
-                          connectedAt: "2026-10-17T07:00:00Z", lastUsedAt: nil, expiresAt: "2027-10-17T07:00:00Z"),
+                          connectedAt: "2026-10-23T07:00:00Z", lastUsedAt: nil, expiresAt: "2027-10-17T07:00:00Z"),
         ] : []
     }
 }

@@ -33,7 +33,7 @@ s = replace_body(s, "    private func readSession()", "        return nil")
 s = replace_body(s, "    private func saveSession(", '        throw QuizError(message: "Screenshot app: sign-in is disabled")')
 s = replace_body(s, "    private func clearLocalSession()", "        ScreenshotFixtures.configure(self)")
 s = replace_body(s, "    private func persist()", "        return")
-s = replace_body(s, "    var localDay:", '        return "2026-10-17"')
+s = replace_body(s, "    var localDay:", '        return String(ISO8601DateFormatter().string(from: ScreenshotFixtures.now).prefix(10))')
 p.write_text(s)
 
 p = output / "Sources/ContentView.swift"; s = p.read_text()
@@ -47,12 +47,13 @@ p.write_text(s)
 p = output / "Sources/DemoData.swift";p.write_text(p.read_text().replace('from: .now', 'from: ScreenshotFixtures.now'))
 
 project = {"name": "ScreenshotDemo", "options": {"deploymentTarget": {"iOS": "27.0"}},
-    "settings": {"base": {"SWIFT_VERSION": "5.10", "CODE_SIGNING_ALLOWED": "NO", "TARGETED_DEVICE_FAMILY": "1"}},
+    "settings": {"base": {"SWIFT_VERSION": "5.10", "CODE_SIGNING_ALLOWED": "NO", "TARGETED_DEVICE_FAMILY": "1,2"}},
     "targets": {"ScreenshotDemo": {"type": "application", "platform": "iOS", "sources": ["Sources", "Assets.xcassets"],
-        "settings": {"base": {"PRODUCT_BUNDLE_IDENTIFIER": "com.00quiz.screenshots", "TARGETED_DEVICE_FAMILY": "1",
+        "settings": {"base": {"PRODUCT_BUNDLE_IDENTIFIER": "com.00quiz.screenshots", "TARGETED_DEVICE_FAMILY": "1,2",
             "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon", "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor"}},
-        "info": {"path": "Info.plist", "properties": {"CFBundleDisplayName": "00Quiz Screenshots", "UILaunchScreen": {},
-            "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]}}}},
+        "info": {"path": "Info.plist", "properties": {"CFBundleDisplayName": "00Quiz", "UILaunchScreen": {},
+            "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"],
+            "UISupportedInterfaceOrientations~ipad": ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]}}}},
     "schemes": {"ScreenshotDemo": {"build": {"targets": {"ScreenshotDemo": "all"}}}}}
 (output / "project.json").write_text(json.dumps(project, indent=2))
 print(output)
