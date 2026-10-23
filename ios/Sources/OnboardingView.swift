@@ -7,12 +7,15 @@ struct OnboardingView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
-                    Image("BrandMark").resizable().scaledToFit().frame(width: 88, height: 88)
-                        .clipShape(RoundedRectangle(cornerRadius: 20)).accessibilityHidden(true)
-                    Text("A little more curious.")
-                        .font(.system(.largeTitle, design: .serif, weight: .bold))
-                        .foregroundStyle(QuizStyle.green)
+                VStack(alignment: .leading, spacing: 24) {
+                    HStack(spacing: 16) {
+                        Text("A little more curious.")
+                            .font(.system(.largeTitle, design: .serif, weight: .bold))
+                            .foregroundStyle(QuizStyle.green)
+                        Spacer(minLength: 0)
+                        Image("BrandMark").resizable().scaledToFit().frame(width: 88, height: 88)
+                            .clipShape(RoundedRectangle(cornerRadius: 20)).accessibilityHidden(true)
+                    }
                     feature("Five questions, every day", systemImage: "sparkles",
                             detail: "No timer. Pick an answer, discover something new, then see how you did.")
                     feature("Your agent is your quiz host", systemImage: "mic.fill",
@@ -24,6 +27,7 @@ struct OnboardingView: View {
                             .quizTapTarget()
                     }
                     .buttonStyle(.borderedProminent).controlSize(.large)
+                    .foregroundStyle(QuizStyle.paper)
                     Button(action: onCompleted) { Text("Explore first").frame(maxWidth: .infinity).quizTapTarget() }
                 }
                 .padding(28).frame(maxWidth: 620).frame(maxWidth: .infinity)
