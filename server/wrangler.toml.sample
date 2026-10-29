@@ -17,7 +17,7 @@ APPLE_TEAM_ID = "REPLACE_WITH_APPLE_TEAM_ID"
 APPLE_KEY_ID = "REPLACE_WITH_SIGN_IN_WITH_APPLE_KEY_ID"
 # APPLE_PRIVATE_KEY and OAUTH_SIGNING_SECRET are Wrangler secrets.
 # Optional exact OAuth redirect URL -> server-owned client display name map:
-# MCP_VERIFIED_CLIENTS = '{"https://client.example/callback":"My Agent"}'
+# MCP_VERIFIED_CLIENTS = '{"https://chatgpt.com/connector_platform_oauth_redirect":"ChatGPT","https://claude.ai/api/mcp/auth_callback":"Claude","https://claude.com/api/mcp/auth_callback":"Claude"}'
 # The saved account IANA time zone controls calendar days; there is no global
 # quiz-date override and callers cannot submit a fictitious current date.
 # Optional, dedicated synthetic App Review tenant UUIDs (never real Apple accounts):

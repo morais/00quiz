@@ -103,14 +103,27 @@ describe("MCP OAuth discovery and registration", () => {
 });
 
 describe("verified MCP clients", () => {
-  const registry = JSON.stringify({ "https://claude.ai/api/mcp/auth_callback": "Claude" });
+  const officialCallbacks = [
+    ["https://chatgpt.com/connector_platform_oauth_redirect", "ChatGPT"],
+    ["https://claude.ai/api/mcp/auth_callback", "Claude"],
+    ["https://claude.com/api/mcp/auth_callback", "Claude"],
+  ];
+  const registry = JSON.stringify(Object.fromEntries(officialCallbacks));
   const withRegistry = (value?: string) => ({ PUBLIC_ORIGIN: "https://api.example.com", MCP_VERIFIED_CLIENTS: value }) as unknown as Env;
+
+  it.each(officialCallbacks)("recognizes the configured official callback %s", (callback, name) => {
+    expect(verifiedClientName(withRegistry(registry), callback)).toBe(name);
+  });
 
   it("names only exact registered HTTPS callbacks", () => {
     const env = withRegistry(registry);
     expect(verifiedClientName(env, "https://claude.ai/api/mcp/auth_callback")).toBe("Claude");
     expect(verifiedClientName(env, "https://claude.ai/api/mcp/auth_callback/extra")).toBeUndefined();
     expect(verifiedClientName(env, "https://evil.example/claude")).toBeUndefined();
+    expect(verifiedClientName(env, "https://chatgpt.com.evil.example/connector_platform_oauth_redirect")).toBeUndefined();
+    expect(verifiedClientName(env, "https://chatgpt.com@evil.example/connector_platform_oauth_redirect")).toBeUndefined();
+    expect(verifiedClientName(env, "https://chatgpt.com/connector_platform_oauth_redirect?next=https://evil.example")).toBeUndefined();
+    expect(verifiedClientName(env, "https://chatgpt.com/connector/oauth/unregistered-callback-id")).toBeUndefined();
   });
 
   it("fails closed on missing or malformed configuration", () => {

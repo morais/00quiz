@@ -8,6 +8,20 @@ Streaks come from a per-account summary in `tenant_streaks`, so a snapshot reads
 
 Install `APPLE_PRIVATE_KEY` and a random 32+ character `OAUTH_SIGNING_SECRET` with Wrangler secrets. An App Store Connect API key is separate from the Sign in with Apple key. Verify `npx wrangler whoami` before deploying with `npm run deploy`. Optional `MCP_VERIFIED_CLIENTS` maps exact client callback URLs to trusted display names on the consent page. Unknown clients remain usable and are labelled unverified.
 
+The official 00Quiz deployment recognizes these exact callbacks as of October 29, 2026:
+
+| Callback | Consent name |
+| --- | --- |
+| `https://chatgpt.com/connector_platform_oauth_redirect` | ChatGPT |
+| `https://claude.ai/api/mcp/auth_callback` | Claude |
+| `https://claude.com/api/mcp/auth_callback` | Claude |
+
+[OpenAI documents the stable ChatGPT callback](https://developers.openai.com/plugins/build/auth) for servers, such as this one, that advertise and return RFC 9207 issuer identification. Older or callback-specific connections may use `https://chatgpt.com/connector/oauth/{callback_id}`; add only the exact 00Quiz callback shown in the plugin's management page when needed. Do not copy another app's callback or use a wildcard. [Claude's current documentation](https://claude.com/docs/connectors/building/authentication#callback-urls) specifies the `claude.ai` address; its earlier documentation also named the `claude.com` address for a possible domain transition. Loopback callbacks remain unverified. The badge means the callback address is recognized, rather than authenticating the client by its self-supplied name. Removing a registry entry affects future consent screens and token exchanges immediately; existing grants retain their stored label.
+
+After changing the registry, run `node scripts/smoke-verified-callbacks.mjs` from `server/`. It uses the existing synthetic plugin reviewer credential outside this checkout, checks the three consent badges and canonical client names plus a lookalike-domain rejection, then denies each flow. It never follows an external callback or issues an app/MCP access token.
+
+Production validation on October 29, 2026 passed for all three recognized callbacks and the lookalike rejection; all test flows were denied and removed. The exact deployed registry, health endpoint and OpenAI domain-verification endpoint were also checked. The backend suite passed 67 tests and typechecking.
+
 ## REST
 
 `GET /agent-instructions` serves public, account-independent quiz-host guidance as `{version, format, instructions}`. The version is derived from the full document content. GET/HEAD support `ETag` and `If-None-Match`, including weak validators, with `304 Not Modified` when current. Reads do not query D1. The guidance includes general-audience content limits for questions, choices, feedback, host messages and sources; user preferences do not override them. These are publishing instructions for the external agent, not an automated server-side content classifier. Edit `src/agentInstructions.ts` and deploy to update guidance; no app update, manual revision bump or copied-prompt change is needed.
