@@ -25,7 +25,8 @@ def replace_body(source, signature, body):
 
 p = output / "Sources/QuizStore.swift"
 s = p.read_text()
-s = replace_body(s, "    init()", "        ScreenshotFixtures.configure(self)")
+s = replace_body(s, "    init()", '''        ScreenshotFixtures.configure(self)
+        if ScreenshotFixtures.scene == "empty" { checkedQuizDay = localDay }''')
 s = replace_body(s, "    func refresh()", "        return")
 s = replace_body(s, "    func loadConnections()", "        return")
 s = replace_body(s, "    private func request<T:", '        throw QuizError(message: "Screenshot app: service access is disabled")')

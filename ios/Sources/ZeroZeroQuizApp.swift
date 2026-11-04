@@ -25,6 +25,9 @@ import SwiftUI
             }
             .environment(store)
             .tint(QuizStyle.green)
+            .onChange(of: scenePhase) { _, phase in
+                if phase != .active { store.prepareForForegroundRefresh() }
+            }
             .task(id: "\(scenePhase)-\(store.isSignedIn)-\(store.isDemo)") {
                 guard scenePhase == .active, store.isSignedIn, !store.isDemo else { return }
                 while !Task.isCancelled {

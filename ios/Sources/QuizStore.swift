@@ -21,6 +21,7 @@ private struct ServerFailure: Decodable { let error: String }
     var lastRefreshed: Date?
     private var session: Session?
     private var refreshInProgress = false
+    private var checkedQuizDay: String?
     private let keychainService = "com.00quiz.app.session"
     var isReviewAccount: Bool { session?.isReview == true }
 
@@ -47,6 +48,16 @@ private struct ServerFailure: Decodable { let error: String }
         guard snapshot?.today == localDay else { return nil }
         return snapshot?.quiz
     }
+    var hasCheckedTodaysQuiz: Bool { checkedQuizDay == localDay }
+    var isLoadingTodaysQuiz: Bool {
+        !hasCheckedTodaysQuiz && (refreshInProgress || notice == nil)
+    }
+
+    func prepareForForegroundRefresh() {
+        // A quiz may arrive while the app is away. Keep cached questions visible,
+        // but confirm an empty day again before offering agent setup.
+        if todaysQuiz == nil { checkedQuizDay = nil; notice = nil }
+    }
 
     func signInWithApple(identityToken: String, authorizationCode: String, rawNonce: String) async throws {
         struct Login: Decodable { struct Tenant: Decodable { let id: String }; let token: String; let tenant: Tenant }
@@ -56,18 +67,21 @@ private struct ServerFailure: Decodable { let error: String }
         ], authenticated: false)
         let newSession = Session(token: login.token, tenantID: login.tenant.id)
         try saveSession(newSession)
-        session = newSession; isDemo = false; isSignedIn = true; snapshot = nil
+        session = newSession; isDemo = false; isSignedIn = true; snapshot = nil; checkedQuizDay = nil
         await refresh()
     }
 
     func refresh() async {
         guard isSignedIn, !isDemo, !refreshInProgress else { return }
         refreshInProgress = true
+        if !hasCheckedTodaysQuiz { notice = nil }
         defer { refreshInProgress = false }
         do {
             let state: QuizSnapshot = try await request("v1/snapshot")
-            snapshot = state; lastRefreshed = .now; notice = nil; persist()
-        } catch is CancellationError {} catch { notice = error.localizedDescription }
+            snapshot = state; checkedQuizDay = state.today; lastRefreshed = .now; notice = nil; persist()
+        } catch is CancellationError {
+        } catch let error as URLError where error.code == .cancelled {
+        } catch { notice = error.localizedDescription }
     }
 
     func signInForReview(accessCode: String) async throws {
@@ -76,7 +90,7 @@ private struct ServerFailure: Decodable { let error: String }
         guard login.tenant.isReview else { throw QuizError(message: "This is not a sample account.") }
         let newSession = Session(token: login.token, tenantID: login.tenant.id, isReview: true)
         try saveSession(newSession)
-        session = newSession; isDemo = false; isSignedIn = true; snapshot = nil
+        session = newSession; isDemo = false; isSignedIn = true; snapshot = nil; checkedQuizDay = nil
         await refresh()
     }
 
@@ -172,7 +186,7 @@ private struct ServerFailure: Decodable { let error: String }
         SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrService: keychainService] as CFDictionary)
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["daily-quiz"])
         UserDefaults.standard.set(false, forKey: "reminderEnabled")
-        session = nil; isSignedIn = false; isDemo = false; snapshot = nil; connections = []; notice = nil; lastRefreshed = nil
+        session = nil; isSignedIn = false; isDemo = false; snapshot = nil; connections = []; notice = nil; lastRefreshed = nil; checkedQuizDay = nil
     }
     private func request<T: Decodable>(_ path: String, method: String = "GET", payload: [String: Any]? = nil, authenticated: Bool = true) async throws -> T {
         let requestingToken = session?.token

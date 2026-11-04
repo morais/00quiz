@@ -28,6 +28,7 @@ enum ScreenshotFixtures {
             state.quiz?.score = 1
         }
         if scene == "completed" || scene == "friend" { state.quiz = complete(state.quiz!, score: 4) }
+        if ["loading", "empty", "load-failed"].contains(scene) { state.quiz = nil }
         return state
     }
 
@@ -55,6 +56,11 @@ enum ScreenshotFixtures {
     @MainActor static func configure(_ store: QuizStore) {
         store.snapshot = snapshot()
         store.isSignedIn = true; store.isDemo = false
+        if scene == "loading" { store.snapshot = nil }
+        if scene == "load-failed" {
+            store.snapshot = nil
+            store.notice = "The Internet connection appears to be offline."
+        }
         store.connections = ["setup", "connections"].contains(scene) ? [
             MCPConnection(id: "sample-chatgpt", clientName: "ChatGPT", scopes: ["quiz:read", "quiz:write"],
                           connectedAt: "2026-10-23T07:00:00Z", lastUsedAt: nil, expiresAt: "2027-10-17T07:00:00Z"),

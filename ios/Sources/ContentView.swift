@@ -39,8 +39,12 @@ struct TodayView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 HStack {
-                    Label("\(store.snapshot?.streak.current ?? 0) day streak", systemImage: "flame.fill")
-                        .font(.subheadline.weight(.semibold))
+                    if let streak = store.snapshot?.streak.current {
+                        Label("\(streak) day streak", systemImage: "flame.fill")
+                            .font(.subheadline.weight(.semibold))
+                    } else {
+                        Text("Your daily five").font(.subheadline.weight(.semibold))
+                    }
                     Spacer()
                     Text(dayLabel(store.localDay)).font(.subheadline).foregroundStyle(.secondary)
                 }
@@ -94,6 +98,20 @@ struct TodayView: View {
                         }
                     }
                     .padding(22).background(.background, in: RoundedRectangle(cornerRadius: 24))
+                } else if store.isLoadingTodaysQuiz {
+                    ProgressView("Loading today’s quiz…")
+                        .frame(maxWidth: .infinity).padding(.vertical, 48)
+                        .background(.background, in: RoundedRectangle(cornerRadius: 24))
+                } else if !store.hasCheckedTodaysQuiz {
+                    ContentUnavailableView {
+                        Label("Couldn’t load today’s quiz", systemImage: "wifi.exclamationmark")
+                    } description: {
+                        Text("Check your connection and try again.")
+                    } actions: {
+                        Button("Try again") { Task { await store.refresh() } }
+                            .buttonStyle(.borderedProminent).controlSize(.large)
+                    }
+                    .background(.background, in: RoundedRectangle(cornerRadius: 24))
                 } else {
                     ContentUnavailableView {
                         Label("Your next five are on their way", systemImage: "sparkles")

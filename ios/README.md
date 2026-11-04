@@ -42,6 +42,8 @@ After Apple processing, `scripts/assign-testflight.py --app-id APP_ID --group-id
 
 The app supports portrait and landscape, Dynamic Type, system dark mode and accessible labels for correct/incorrect answers. Read cached data offline; submitting an answer requires a connection. Sessions use Keychain with a device-only accessibility class. Cache files are per account and protected, and are removed on sign-out/deletion/session expiry. Only 90 previous quizzes are loaded into the app; streak totals cover the complete retained account history.
 
+Today shows cached questions immediately. Without a current quiz, it shows a loading card until a fresh snapshot confirms whether today's quiz exists. A failed request shows a retry action instead of agent setup; the Connect your agent action appears only after a successful check confirms an empty day. Empty days are checked again after returning from the background, and yesterday's cache is never treated as confirmation about today. Cancelling a refresh when leaving the app does not show a network error.
+
 ## App Store preparation
 
 See `../docs/appstore/README.md` for the prepared listing and validation record. `ScreenshotDemo/README.md` documents the isolated simulator app that captures production views with fictional fixtures. It is excluded from the shipping target. The six opaque native screenshots live in `../docs/appstore/screenshots`.
