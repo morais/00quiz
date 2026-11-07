@@ -38,8 +38,9 @@ try {
   const guidanceTool = (await tool("get_quiz_instructions")).value.result.structuredContent;
   assert.equal(guidanceTool.version, guidance.version);
   assert.equal(guidanceTool.instructions, guidance.instructions);
-  assert.deepEqual((await tool("get_quiz_instructions", { knownVersion: guidance.version })).value.result.structuredContent,
-    { version: guidance.version, changed: false });
+  const { setup, ...unchanged } = (await tool("get_quiz_instructions", { knownVersion: guidance.version })).value.result.structuredContent;
+  assert.deepEqual(unchanged, { version: guidance.version, changed: false });
+  assert.equal(setup.status, "unknown");
   const day = context.value.result.structuredContent.today;
   const input = { day, title: "Deployment check", hostMessage: "A private synthetic test quiz.", questions: Array.from({ length: 5 }, (_, i) => ({ prompt: `Synthetic check ${i + 1}: choose option A.`, topic: "Smoke test", choices: ["Option A", "Option B", "Option C", "Option D"], correctIndex: 0, explanation: "Option A is correct for this synthetic check." })) };
   const published = await tool("publish_daily_quiz", input);

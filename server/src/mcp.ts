@@ -4,6 +4,7 @@ import { PackInput, PreferencesPatch } from "./model";
 import { type Principal } from "./auth";
 import { authChallenge } from "./oauth";
 import { readInstructions } from "./agentInstructions";
+import { accountSetup } from "./setup";
 
 const tools = [
   { name: "get_quiz_instructions", title: "Get Quiz Instructions", readOnly: true,
@@ -73,6 +74,8 @@ export async function routeMcp(req: Request, env: Env, principal: Principal): Pr
       case "update_quiz_preferences": result = await updatePreferences(env, principal.tenantId, parsed.data); break;
       case "publish_daily_quiz": result = await publishPack(env, principal.tenantId, parsed.data); break;
     }
+    if (tool.readOnly) result = { ...result as object,
+      setup: await accountSetup(env, principal.tenantId, tool.name, parsed.data) };
     return rpc(id, { content: [{ type: "text", text: JSON.stringify(result) }], structuredContent: result });
   } catch (cause) {
     const response = await apiError(cause).json();

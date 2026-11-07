@@ -7,7 +7,8 @@ import { execFileSync } from "node:child_process";
 import { reviewAccessPath } from "./review-access.mjs";
 
 const origin = "https://api.00quiz.com";
-const { accessCode, tenantId } = JSON.parse(readFileSync(reviewAccessPath(), "utf8"));
+const setupOnly = process.argv.includes("--setup-only");
+const { accessCode, tenantId } = JSON.parse(readFileSync(reviewAccessPath({ plugin: process.argv.includes("--plugin") }), "utf8"));
 const digest = x => createHash("sha256").update(x).digest("hex");
 const hashes = [];
 let app;
@@ -21,24 +22,26 @@ const hidden = (html, name) => {
   assert.ok(value, `Missing ${name}`); return value;
 };
 try {
-  assert.equal((await call("/v1/auth/review", null, "POST", { accessCode: "invalid" })).status, 401);
-  const loginResponse = await call("/v1/auth/review", null, "POST", { accessCode });
-  assert.equal(loginResponse.status, 201);
-  const login = await loginResponse.json();
-  assert.equal(login.tenant.id, tenantId); assert.equal(login.tenant.isReview, true);
-  app = login.token; hashes.push(digest(app));
-  let state = await (await call("/v1/review/reset", app, "POST")).json();
-  assert.equal(state.quiz.questions.length, 5);
-  assert.ok(state.quiz.questions.every(q => q.answer === null && q.correctIndex === null));
-  assert.ok(state.history.length >= 3);
-  const keys = [1, 2, 0, 3, 1];
-  for (let i = 0; i < 5; i++) {
-    const response = await call(`/v1/quizzes/${state.quiz.id}/answers`, app, "POST", { questionIndex: i, choiceIndex: i < 4 ? keys[i] : 0 });
-    assert.equal(response.status, 200); state = await response.json();
+  if (!setupOnly) {
+    assert.equal((await call("/v1/auth/review", null, "POST", { accessCode: "invalid" })).status, 401);
+    const loginResponse = await call("/v1/auth/review", null, "POST", { accessCode });
+    assert.equal(loginResponse.status, 201);
+    const login = await loginResponse.json();
+    assert.equal(login.tenant.id, tenantId); assert.equal(login.tenant.isReview, true);
+    app = login.token; hashes.push(digest(app));
+    let state = await (await call("/v1/review/reset", app, "POST")).json();
+    assert.equal(state.quiz.questions.length, 5);
+    assert.ok(state.quiz.questions.every(q => q.answer === null && q.correctIndex === null));
+    assert.ok(state.history.length >= 3);
+    const keys = [1, 2, 0, 3, 1];
+    for (let i = 0; i < 5; i++) {
+      const response = await call(`/v1/quizzes/${state.quiz.id}/answers`, app, "POST", { questionIndex: i, choiceIndex: i < 4 ? keys[i] : 0 });
+      assert.equal(response.status, 200); state = await response.json();
+    }
+    assert.equal(state.quiz.completed, true); assert.equal(state.quiz.score, 4);
+    assert.ok(state.quiz.questions.every(q => q.answer && q.correctIndex !== null && q.explanation));
+    assert.equal((await call("/mcp", app, "POST", {})).status, 401);
   }
-  assert.equal(state.quiz.completed, true); assert.equal(state.quiz.score, 4);
-  assert.ok(state.quiz.questions.every(q => q.answer && q.correctIndex !== null && q.explanation));
-  assert.equal((await call("/mcp", app, "POST", {})).status, 401);
 
   const callback = "https://review.example/quiz-callback", verifier = randomBytes(32).toString("base64url");
   const registration = await call("/oauth/register", null, "POST", { client_name: "00Quiz review smoke", redirect_uris: [callback] });
@@ -61,14 +64,22 @@ try {
   assert.equal((await call("/v1/snapshot", mcp)).status, 401);
   const response = await call("/mcp", mcp, "POST", { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "get_quiz_context", arguments: {} } });
   assert.equal(response.status, 200); const context = (await response.json()).result.structuredContent;
-  assert.equal(context.quiz.score, 4);
-  const connections = (await (await call("/v1/account/mcp-connections", app)).json()).connections;
-  assert.ok(connections.some(x => x.clientName.includes("review smoke")));
-  console.log("PASS: native reviewer login, real quiz scoring, redacted answers, repeat testing, reviewer OAuth/PKCE/consent, MCP context and credential separation");
+  if (!setupOnly) assert.equal(context.quiz.score, 4);
+  assert.deepEqual(context.setup, { status: "ready" });
+  for (const name of ["get_quiz_instructions", "get_quiz_history"]) {
+    const read = await call("/mcp", mcp, "POST", { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name, arguments: {} } });
+    assert.equal(read.status, 200);
+    assert.deepEqual((await read.json()).result.structuredContent.setup, { status: "ready" });
+  }
+  if (!setupOnly) {
+    const connections = (await (await call("/v1/account/mcp-connections", app)).json()).connections;
+    assert.ok(connections.some(x => x.clientName.includes("review smoke")));
+    console.log("PASS: native reviewer login, real quiz scoring, redacted answers, repeat testing, reviewer OAuth/PKCE/consent, MCP context and credential separation");
+  } else console.log("PASS: prepared reviewer OAuth/PKCE/consent, ready setup on all read tools, and credential separation; quiz data unchanged.");
 } finally {
   if (app) assert.equal((await call("/v1/review/reset", app, "POST")).status, 200);
   if (hashes.length) execFileSync("npx", ["wrangler", "d1", "execute", "00quiz", "--remote", "--command",
     `UPDATE credentials SET revoked_at='${new Date().toISOString()}' WHERE tenant_id='${tenantId}' AND token_hash IN (${hashes.map(x => `'${x}'`).join(",")})`],
     { cwd: new URL("../", import.meta.url), stdio: "ignore" });
-  console.log("Restored today’s sample quiz and revoked the smoke-test grants.");
+  console.log(app ? "Restored today’s sample quiz and revoked the smoke-test grants." : "Revoked the smoke-test grant.");
 }

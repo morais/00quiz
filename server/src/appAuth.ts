@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { appleEmail, revokeAppleToken, verifyNativeAppleLogin } from "./apple";
-import { constantTimeEqual, findOrCreateTenant, issueCredential, revokeCredential, tenantForPrincipal, type Principal } from "./auth";
+import { constantTimeEqual, findOrCreateTenant, issueNativeAppCredential, revokeCredential, tenantForPrincipal, type Principal } from "./auth";
 import { json, type Env } from "./api";
 import { PreferencesPatch } from "./model";
 
@@ -22,9 +22,7 @@ export async function signInWithApple(req: Request, env: Env, ctx?: ExecutionCon
   try {
     const { claims } = await verifyNativeAppleLogin(env, input.identityToken, input.authorizationCode, input.nonce);
     const tenant = await findOrCreateTenant(env, claims.sub, appleEmail(claims), { source: "app", ctx });
-    await env.DB.prepare("INSERT OR IGNORE INTO preferences (tenant_id, time_zone, updated_at) VALUES (?, ?, ?)")
-      .bind(tenant.id, input.timeZone ?? "UTC", new Date().toISOString()).run();
-    const credential = await issueCredential(env, tenant.id, "app", "iOS app");
+    const credential = await issueNativeAppCredential(env, tenant.id, input.timeZone ?? "UTC");
     return json({ token: credential.token, expiresAt: credential.expiresAt,
       tenant: { id: tenant.id, email: tenant.email } }, 201);
   } catch (cause) {

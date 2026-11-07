@@ -12,7 +12,7 @@ const open: Array<{ close: () => void }> = [];
 afterEach(() => { for (const db of open.splice(0)) db.close(); });
 function setup() {
   const { db, d1 } = migratedD1(); open.push(db);
-  for (const id of ["one", "two"]) db.prepare("INSERT INTO tenants VALUES (?, ?, NULL, ?, ?)")
+  for (const id of ["one", "two"]) db.prepare("INSERT INTO tenants (id, apple_subject, email, created_at, updated_at) VALUES (?, ?, NULL, ?, ?)")
     .run(id, id, now.toISOString(), now.toISOString());
   return { db, env: { DB: d1, PUBLIC_ORIGIN: origin } as Env };
 }

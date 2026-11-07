@@ -10,7 +10,7 @@ afterEach(() => { for (const db of open.splice(0)) db.close(); });
 const now = new Date("2026-10-17T09:00:00Z");
 function setup() {
   const { db, d1 } = migratedD1(); open.push(db);
-  for (const id of ["one", "two"]) db.prepare("INSERT INTO tenants VALUES (?, ?, NULL, ?, ?)").run(id, id, now.toISOString(), now.toISOString());
+  for (const id of ["one", "two"]) db.prepare("INSERT INTO tenants (id, apple_subject, email, created_at, updated_at) VALUES (?, ?, NULL, ?, ?)").run(id, id, now.toISOString(), now.toISOString());
   return { db, env: { DB: d1, PUBLIC_ORIGIN: "https://api.00quiz.com" } as Env };
 }
 const pack = (day = "2026-10-17") => ({ day, title: "A little curiosity", hostMessage: "Welcome back! Five new discoveries await.",

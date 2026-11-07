@@ -9,7 +9,7 @@ afterEach(() => { for (const db of open.splice(0)) db.close(); });
 describe("scheduled cleanup", () => {
   it("deletes expired and revoked credentials and keeps live ones", async () => {
     const { db, d1 } = migratedD1(); open.push(db);
-    db.prepare("INSERT INTO tenants VALUES ('one', 'one', NULL, '2026-01-01', '2026-01-01')").run();
+    db.prepare("INSERT INTO tenants (id, apple_subject, email, created_at, updated_at) VALUES ('one', 'one', NULL, '2026-01-01', '2026-01-01')").run();
     const credential = db.prepare(`INSERT INTO credentials (token_hash, id, tenant_id, kind, audience, scopes, label, created_at, expires_at, revoked_at)
       VALUES (?, ?, 'one', 'app', 'app', '[]', 'iPhone', '2026-01-01', ?, ?)`);
     credential.run("expired", "a", "2026-01-02T00:00:00Z", null);

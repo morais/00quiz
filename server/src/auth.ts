@@ -97,6 +97,27 @@ export async function issueCredential(
   label: string,
   scopes: Scope[] = ["quiz:read", "quiz:write"],
 ): Promise<{ token: string; expiresAt: string }> {
+  const credential = await prepareCredential(env, tenantId, kind, label, scopes);
+  await credential.statement.run();
+  return { token: credential.token, expiresAt: credential.expiresAt };
+}
+
+// Called only after the native Apple token/code/nonce exchange succeeds.
+// Commit the app initialization, credential and immutable marker together.
+export async function issueNativeAppCredential(env: Env, tenantId: string, timeZone: string) {
+  const credential = await prepareCredential(env, tenantId, "app", "iOS app", ["quiz:read", "quiz:write"]);
+  await env.DB.batch([
+    env.DB.prepare("INSERT OR IGNORE INTO preferences (tenant_id, time_zone, updated_at) VALUES (?, ?, ?)")
+      .bind(tenantId, timeZone, credential.createdAt),
+    credential.statement,
+    env.DB.prepare(`UPDATE tenants SET first_native_sign_in_at = ?
+      WHERE id = ? AND apple_subject IS NOT NULL AND first_native_sign_in_at IS NULL`)
+      .bind(credential.createdAt, tenantId),
+  ]);
+  return { token: credential.token, expiresAt: credential.expiresAt };
+}
+
+async function prepareCredential(env: Env, tenantId: string, kind: CredentialKind, label: string, scopes: Scope[]) {
   const token = `qq_${kind}_${randomToken()}`;
   const tokenHash = await sha256Hex(token);
   const id = crypto.randomUUID();
@@ -104,12 +125,12 @@ export async function issueCredential(
   // Daily agent tasks need durable authorization. Existing grants keep the
   // expiry already advertised to their client; only new MCP grants get a year.
   const expiresAt = new Date(now.getTime() + (kind === "app" ? 90 : 365) * 86400000).toISOString();
-  await env.DB.prepare(`INSERT INTO credentials
+  const statement = env.DB.prepare(`INSERT INTO credentials
     (id, token_hash, tenant_id, kind, audience, scopes, label, created_at, expires_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
     id, tokenHash, tenantId, kind, audience(env, kind), scopes.join(" "), label.slice(0, 120), now.toISOString(), expiresAt,
-  ).run();
-  return { token, expiresAt };
+  );
+  return { token, expiresAt, createdAt: now.toISOString(), statement };
 }
 
 export async function revokeCredential(env: Env, principal: Principal): Promise<void> {

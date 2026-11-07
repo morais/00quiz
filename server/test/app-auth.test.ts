@@ -20,12 +20,15 @@ const login = (extra = {}) => new Request("https://api.00quiz.com/v1/auth/apple"
 
 describe("Apple account lifecycle", () => {
   it("initializes the first native sign-in's time zone without resetting saved preferences on later sign-ins", async () => {
-    const { env } = setup();
+    const { env, db } = setup();
     const first = await signInWithApple(login({ timeZone: "Europe/Lisbon" }), env);
     expect(first.status).toBe(201);
     const session = await first.json() as { token: string; tenant: { id: string } };
+    const marker = () => (db.prepare("SELECT first_native_sign_in_at AS value FROM tenants WHERE id=?").get(session.tenant.id) as { value: string | null }).value;
+    const firstSignIn = marker(); expect(firstSignIn).toBeTruthy();
     expect((await preferences(env, session.tenant.id)).timeZone).toBe("Europe/Lisbon");
     await signInWithApple(login({ timeZone: "Asia/Tokyo" }), env);
+    expect(marker()).toBe(firstSignIn);
     expect((await preferences(env, session.tenant.id)).timeZone).toBe("Europe/Lisbon");
     const principal = await authenticate(new Request("https://api.00quiz.com/v1", { headers: { Authorization: `Bearer ${session.token}` } }), env, "app");
     expect(principal?.tenantId).toBe(session.tenant.id);
@@ -33,6 +36,12 @@ describe("Apple account lifecycle", () => {
   it("rejects invalid time zones before creating an account", async () => {
     const { env, db } = setup();
     expect((await signInWithApple(login({ timeZone: "invalid-zone" }), env)).status).toBe(400);
+    expect(db.prepare("SELECT COUNT(*) AS count FROM tenants").get()).toMatchObject({ count: 0 });
+  });
+  it("records no native sign-in after a failed Apple verification", async () => {
+    const { env, db } = setup();
+    vi.mocked(apple.verifyNativeAppleLogin).mockRejectedValueOnce(new Error("Invalid nonce"));
+    expect((await signInWithApple(login(), env)).status).toBe(401);
     expect(db.prepare("SELECT COUNT(*) AS count FROM tenants").get()).toMatchObject({ count: 0 });
   });
   it("requires matching Apple reauthentication and deletes all quiz data and agent credentials", async () => {

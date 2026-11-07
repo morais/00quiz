@@ -13,9 +13,13 @@ const principal: Principal = { tenantId: "tenant", kind: "mcp", scopes: ["quiz:r
 const get = (method = "GET", etag?: string) => worker.fetch(new Request(`${origin}/agent-instructions`, {
   method, headers: etag ? { "If-None-Match": etag } : undefined,
 }), publicEnv, ctx);
-const tool = (argumentsValue = {}, scopes = principal.scopes) => routeMcp(new Request(`${origin}/mcp`, {
-  method: "POST", body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "get_quiz_instructions", arguments: argumentsValue } }),
-}), publicEnv, { ...principal, scopes });
+const tool = async (argumentsValue = {}, scopes = principal.scopes) => {
+  const { db, d1 } = migratedD1();
+  try { return await routeMcp(new Request(`${origin}/mcp`, {
+    method: "POST", body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "get_quiz_instructions", arguments: argumentsValue } }),
+  }), { ...publicEnv, DB: d1 }, { ...principal, scopes });
+  } finally { db.close(); }
+};
 
 describe("versioned agent guidance", () => {
   it("derives a stable version from content and invalidates it automatically on an edit", async () => {
@@ -60,7 +64,7 @@ describe("versioned agent guidance", () => {
     const first = await (await tool()).json();
     expect(first).toMatchObject({ result: { structuredContent: { ...document, changed: true } } });
     const unchanged = await (await tool({ knownVersion: document.version })).json() as { result: { structuredContent: unknown } };
-    expect(unchanged.result.structuredContent).toEqual({ version: document.version, changed: false });
+    expect(unchanged.result.structuredContent).toMatchObject({ version: document.version, changed: false, setup: { status: "unknown" } });
     expect(await readInstructions("old-version")).toMatchObject({ ...document, changed: true });
     expect((await tool({}, ["quiz:write"])).status).toBe(403);
   });
@@ -68,7 +72,7 @@ describe("versioned agent guidance", () => {
   it("advertises the version in ordinary context without repeating the whole guidance", async () => {
     const { db, d1 } = migratedD1();
     try {
-      db.prepare("INSERT INTO tenants VALUES ('tenant', 'tenant', NULL, '2026-01-01', '2026-01-01')").run();
+      db.prepare("INSERT INTO tenants (id, apple_subject, email, created_at, updated_at) VALUES ('tenant', 'tenant', NULL, '2026-01-01', '2026-01-01')").run();
       const state = await agentContext({ DB: d1, PUBLIC_ORIGIN: origin }, "tenant");
       expect(state.agentInstructions).toEqual({ version: (await agentInstructions()).version,
         url: `${origin}/agent-instructions`, tool: "get_quiz_instructions" });
