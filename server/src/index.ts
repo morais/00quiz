@@ -9,6 +9,8 @@ import { openAIAppsChallenge } from "./openAIAppsChallenge";
 import { deleteAccount, signInWithApple, signOut } from "./appAuth";
 import { disconnectMcpConnection, listMcpConnections } from "./mcpConnections";
 import { sweepExpiredAuthData } from "./cleanup";
+import { notifyQuizBadge, routeQuizBadgeDevice, sweepQuizBadges } from "./quizBadges";
+export { QuizBadgeDelivery } from "./quizBadges";
 import { signInAllowed, sourceAllowed, tenantAllowed, tooManyRequests } from "./rateLimit";
 import { appleCallback, authChallenge, authorizationServerMetadata, beginAuthorization,
   decideConsent, exchangeCode, protectedResourceMetadata, registerClient, showConsent,
@@ -51,32 +53,46 @@ export default {
         const principal = await authenticate(req, env, "mcp");
         if (!principal) return authChallenge(env);
         if (!(await tenantAllowed(env, principal.tenantId))) return tooManyRequests();
-        return routeMcp(req, env, principal);
+        const result = await routeMcp(req, env, principal);
+        if (method === "POST" && env.QUIZ_BADGES) ctx.waitUntil(notifyQuizBadge(env, principal.tenantId));
+        return result;
       }
       if (path.startsWith("/v1/")) {
         const principal = await authenticate(req, env, "app");
         if (!principal) return json({ error: "Unauthorized" }, 401);
         if (!(await tenantAllowed(env, principal.tenantId))) return tooManyRequests();
-        if (path === "/v1/auth/logout" && method === "POST") return signOut(env, principal);
+        if (path === "/v1/account/quiz-badge-device") {
+          const result = await routeQuizBadgeDevice(req, env, principal);
+          if (result.ok && env.QUIZ_BADGES) ctx.waitUntil(notifyQuizBadge(env, principal.tenantId));
+          return result;
+        }
+        if (path === "/v1/auth/logout" && method === "POST") {
+          const result = await signOut(env, principal);
+          if (env.QUIZ_BADGES) ctx.waitUntil(notifyQuizBadge(env, principal.tenantId));
+          return result;
+        }
         if (path === "/v1/auth/delete-account" && method === "POST") return deleteAccount(req, env, principal);
         if (path === "/v1/review/reset" && method === "POST") return resetReviewQuiz(env, principal);
         if (path === "/v1/snapshot" && method === "GET") await ensureReviewFixture(env, principal.tenantId);
         if (path === "/v1/account/mcp-connections" && method === "GET") return listMcpConnections(env, principal);
         const connection = /^\/v1\/account\/mcp-connections\/([a-f0-9-]{32,36})$/.exec(path);
         if (connection && method === "DELETE") return disconnectMcpConnection(env, principal, connection[1]);
-        return routeApi(req, env, principal);
+        const result = await routeApi(req, env, principal);
+        if (method !== "GET" && result.ok && env.QUIZ_BADGES) ctx.waitUntil(notifyQuizBadge(env, principal.tenantId));
+        return result;
       }
       return json({ error: "Not found" }, 404);
     } catch (cause) { return apiError(cause); }
   },
   // The daily cron in wrangler.toml; a failed sweep shows as a failed cron run.
-  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
-    await sweepExpiredAuthData(env);
+  async scheduled(controller: ScheduledController, env: Env): Promise<void> {
+    if (controller.cron === "17 4 * * *") await sweepExpiredAuthData(env);
+    else await sweepQuizBadges(env);
   },
 };
 
 function page(privacy: boolean) {
   return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>00Quiz${privacy ? " · Privacy" : ""}</title><style>body{font:18px system-ui;max-width:640px;margin:10vh auto;padding:24px;line-height:1.6;background:#fcf9f2;color:#193b31}a{color:inherit}h1{font-size:48px}</style><h1>00Quiz</h1>${privacy
-    ? `<h2>Your quiz, your agent.</h2><p>00Quiz stores your Apple account identifier, optional email, optional quiz preferences and post-quiz feedback, time zone, daily questions, answers and scores. Your email is not your account identifier.</p><p>Your connected MCP agent can read your quiz preferences, feedback, quizzes and performance and publish question packs after you approve its access. It cannot submit answers for you. The agent service you choose processes data under its own terms.</p><p>Account data is stored in Cloudflare D1. App credentials are held in iOS Keychain; the server stores only hashes of app and MCP credentials. The app caches quiz data on your device. There is no advertising or cross-app tracking.</p><p>Disconnect agents in Settings. Delete your account and its associated quiz data in the app after confirming with Apple. Local reminders are optional.</p><p>Contact: <a href="https://00quiz.com/support">00quiz.com/support</a></p>`
+    ? `<h2>Your quiz, your agent.</h2><p>00Quiz stores your Apple account identifier, optional email, optional quiz preferences and post-quiz feedback, time zone, daily questions, answers and scores. Your email is not your account identifier.</p><p>Your connected MCP agent can read your quiz preferences, feedback, quizzes and performance and publish question packs after you approve its access. It cannot submit answers for you. The agent service you choose processes data under its own terms.</p><p>Account data is stored in Cloudflare D1. App credentials are held in iOS Keychain; the server stores only hashes of app and MCP credentials. The app caches quiz data on your device. There is no advertising or cross-app tracking.</p><p>Disconnect agents in Settings. Delete your account and its associated quiz data in the app after confirming with Apple. Local reminders are optional. Quiz badges are off by default. If enabled, we store this installation’s identifier and Apple push token linked to your account, and use Apple Push Notification service to deliver badge counts only, without quiz content, banners or sounds. Turn off Quiz badge in Settings to stop delivery; registrations are removed after the final badge clear or on account deletion.</p><p>Contact: <a href="https://00quiz.com/support">00quiz.com/support</a></p>`
     : `<p>Five questions. Something new, every day.</p><p>Connect your own MCP agent, let it choose questions around your interests, and build a daily streak on iPhone.</p><p>MCP endpoint: <code>https://api.00quiz.com/mcp</code></p><p><a href="/privacy">Privacy</a> · <a href="https://00quiz.com/support">Support</a></p>`}</html>`;
 }

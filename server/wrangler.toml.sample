@@ -69,7 +69,18 @@ namespace_id = "23003"
 # Daily sweep of expired OAuth flows, codes, and credentials. Workers Free
 # allows five crons per account; Paid allows 250.
 [triggers]
-crons = ["17 4 * * *"]
+crons = ["17 4 * * *", "*/5 * * * *"]
+
+[[durable_objects.bindings]]
+name = "QUIZ_BADGES"
+class_name = "QuizBadgeDelivery"
+
+[[migrations]]
+tag = "quiz-badges-v1"
+new_sqlite_classes = ["QuizBadgeDelivery"]
+
+# APNS_KEY_ID and APNS_PRIVATE_KEY are Wrangler secrets for a production
+# topic-specific key. Optional APNS_DEVELOPMENT_* secrets enable debug devices.
 
 # Run the Worker near the D1 primary when that makes requests faster: every
 # request makes several sequential database calls.

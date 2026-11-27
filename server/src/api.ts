@@ -12,6 +12,9 @@ export interface Env {
   OPENAI_APPS_CHALLENGE_TOKEN?: string;
   SOURCE_LIMITER?: RateLimit; SIGN_IN_LIMITER?: RateLimit; TENANT_LIMITER?: RateLimit;
   SIGNUP_ALERTS?: SendEmail; SIGNUP_ALERT_TO?: string; SIGNUP_ALERT_FROM?: string;
+  APNS_KEY_ID?: string; APNS_PRIVATE_KEY?: string;
+  APNS_DEVELOPMENT_KEY_ID?: string; APNS_DEVELOPMENT_PRIVATE_KEY?: string;
+  QUIZ_BADGES?: DurableObjectNamespace;
 }
 export const appName = (env: Env) => env.APP_NAME?.trim().slice(0, 60) || "Quiz";
 export const json = (value: unknown, status = 200) => Response.json(value, { status, headers: { "Cache-Control": "no-store" } });

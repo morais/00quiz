@@ -12,7 +12,9 @@ private struct Session: Codable { let token: String; let tenantID: String; var i
 private struct ServerFailure: Decodable { let error: String }
 
 @MainActor @Observable final class QuizStore {
-    var snapshot: QuizSnapshot?
+    var snapshot: QuizSnapshot? {
+        didSet { QuizBadgeNotifications.shared.quizChanged(self) }
+    }
     var connections: [MCPConnection] = []
     var isDemo = false
     var isSignedIn = false
@@ -24,6 +26,7 @@ private struct ServerFailure: Decodable { let error: String }
     private var checkedQuizDay: String?
     private let keychainService = "com.00quiz.app.session"
     var isReviewAccount: Bool { session?.isReview == true }
+    var accountID: String? { session?.tenantID }
 
     init() {
         session = readSession()
@@ -170,6 +173,11 @@ private struct ServerFailure: Decodable { let error: String }
         }
         clearLocalSession()
     }
+    func setQuizBadgeDevice(installationID: String, token: String, environment: String, enabled: Bool) async throws {
+        let _: [String: Bool] = try await request("v1/account/quiz-badge-device", method: "PUT", payload: [
+            "installationId": installationID, "deviceToken": token, "environment": environment, "enabled": enabled
+        ])
+    }
     func deleteAccount(identityToken: String, authorizationCode: String, rawNonce: String) async throws {
         if isDemo { clearLocalSession(); return }
         let _: [String: Bool] = try await request("v1/auth/delete-account", method: "POST", payload: [
@@ -182,6 +190,7 @@ private struct ServerFailure: Decodable { let error: String }
     }
 
     private func clearLocalSession() {
+        QuizBadgeNotifications.shared.reset()
         if let path = cacheURL { try? FileManager.default.removeItem(at: path) }
         SecItemDelete([kSecClass: kSecClassGenericPassword, kSecAttrService: keychainService] as CFDictionary)
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["daily-quiz"])

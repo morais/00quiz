@@ -16,7 +16,7 @@ The implementation follows sibling projects 00Todo and 00Food: SwiftUI, a Cloudf
 - Interests, language and difficulty are optional. The agent can establish defaults; the app can edit or clear them. New native accounts use the iPhone's time zone. Later logins preserve it; Settings can update it when travelling.
 - Published quizzes are immutable. Publishing identical content for the same day is idempotent. An agent can prepare today through seven days ahead; future quizzes remain hidden from the app until their day.
 - App snapshots cache today's quiz and up to 90 previous quizzes. New answers need a network connection so answer keys stay on the server. Retrying the same submitted choice is safe, including after midnight if the first submission succeeded.
-- The app checks for updates every 30 seconds while active. Optional local reminders use the iPhone's current local clock; delivery of a reminder does not establish that a quiz exists. There is no push-notification backend in this version.
+- The app checks for updates every 30 seconds while active. Optional local reminders use the iPhone's current local clock; delivery of a reminder does not establish that a quiz exists. An optional per-device quiz badge is off by default. When enabled, badge-only server pushes show 1 while today’s quiz is unfinished and clear after all five answers. No sound or banner.
 - Settings includes active MCP connections, revocation, sign-out, and deletion with fresh Apple reauthentication.
 - Quiz-host guidance lives on the backend, available through `get_quiz_instructions` and `/agent-instructions`. Every context response advertises its content-derived version so agents can refresh only when it changes. The copied setup prompt stays short; future guidance changes need only a backend deployment.
 
@@ -28,7 +28,7 @@ The official backend is `https://api.00quiz.com`; its MCP endpoint is `https://a
 
 ## Privacy
 
-The service stores an Apple account identifier, optional email, optional interests/language/difficulty, time zone, quizzes, answers and scores. Credentials are stored as hashes in D1. The app holds its credential in Keychain and caches its account's quiz snapshot in protected application storage. The user grants a connected agent access to quiz preferences and performance; the agent can publish quizzes but cannot submit answers. The chosen agent's privacy terms apply to its processing.
+The service stores an Apple account identifier, optional email, optional interests/language/difficulty, time zone, quizzes, answers and scores. If quiz badges are enabled, it also stores an installation identifier and Apple push token linked to the account, used only for badge delivery. Credentials are stored as hashes in D1. The app holds its credential in Keychain and caches its account's quiz snapshot in protected application storage. The user grants a connected agent access to quiz preferences and performance; the agent can publish quizzes but cannot submit answers. The chosen agent's privacy terms apply to its processing.
 
 The deployed service exposes `/privacy` and a support contact. Account deletion removes quizzes, answers, preferences, OAuth flows and credentials. There is no advertising or cross-app tracking.
 

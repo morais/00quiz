@@ -15,7 +15,7 @@ describe("scheduled cleanup", () => {
     credential.run("expired", "a", "2026-01-02T00:00:00Z", null);
     credential.run("revoked", "b", "2999-01-01T00:00:00Z", "2026-01-01T00:00:00Z");
     credential.run("live", "c", "2999-01-01T00:00:00Z", null);
-    await worker.scheduled({} as ScheduledController, { DB: d1 } as Env);
+    await worker.scheduled({ cron: "17 4 * * *" } as ScheduledController, { DB: d1 } as Env);
     expect(db.prepare("SELECT token_hash FROM credentials").all()).toEqual([{ token_hash: "live" }]);
   });
 });

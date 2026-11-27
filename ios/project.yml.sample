@@ -9,12 +9,16 @@ settings:
     SWIFT_VERSION: 5.10
     MARKETING_VERSION: "1.2"
     CURRENT_PROJECT_VERSION: "1"
+    QUIZ_APNS_ENVIRONMENT: development
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     TARGETED_DEVICE_FAMILY: "1,2"
     SUPPORTS_MACCATALYST: "NO"
     SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "YES"
     SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: "NO"
+  configs:
+    Release:
+      QUIZ_APNS_ENVIRONMENT: production
 targets:
   ZeroZeroQuiz:
     productName: 00Quiz
@@ -32,6 +36,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         QuizServerBaseURL: https://api.example.com
+        QuizPushEnvironment: $(QUIZ_APNS_ENVIRONMENT)
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
         UISupportedInterfaceOrientations~ipad:
@@ -46,6 +51,7 @@ targets:
     entitlements:
       path: Resources/App/ZeroZeroQuiz.entitlements
       properties:
+        aps-environment: $(QUIZ_APNS_ENVIRONMENT)
         com.apple.developer.applesignin:
           - Default
     settings:

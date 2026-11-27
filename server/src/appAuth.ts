@@ -3,6 +3,7 @@ import { appleEmail, revokeAppleToken, verifyNativeAppleLogin } from "./apple";
 import { constantTimeEqual, findOrCreateTenant, issueNativeAppCredential, revokeCredential, tenantForPrincipal, type Principal } from "./auth";
 import { json, type Env } from "./api";
 import { PreferencesPatch } from "./model";
+import { notifyQuizBadge } from "./quizBadges";
 
 const LoginInput = z.strictObject({
   identityToken: z.string().min(100).max(12000),
@@ -56,6 +57,10 @@ export async function deleteAccount(req: Request, env: Env, principal: Principal
     console.warn("Apple account deletion re-authentication failed", cause instanceof Error ? cause.message : "unknown error");
     return json({ error: "Could not verify and revoke Apple sign-in. Please try again." }, 502);
   }
+  // Clear every opted-in installation before deleting its registration.
+  await env.DB.prepare("UPDATE quiz_badge_devices SET enabled = 0, revision = ? WHERE tenant_id = ?")
+    .bind(crypto.randomUUID(), tenant.id).run();
+  await notifyQuizBadge(env, tenant.id);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM quiz_packs WHERE tenant_id = ?").bind(tenant.id),
     env.DB.prepare("DELETE FROM preferences WHERE tenant_id = ?").bind(tenant.id),

@@ -14,6 +14,7 @@ struct SettingsView: View {
                 NavigationLink { PreferencesView() } label: { Label("Your interests & preferences", systemImage: "slider.horizontal.3") }
                 NavigationLink { AgentSetupView() } label: { Label("Your agent", systemImage: "link") }
                 NavigationLink { ReminderView() } label: { Label("Morning reminder", systemImage: "bell") }
+                NavigationLink { QuizBadgeSettingsView() } label: { Label("Quiz badge", systemImage: "app.badge") }
             }
             Section {
                 Text("Your agent sets the stage. You bring the curiosity.").foregroundStyle(.secondary)
@@ -253,6 +254,9 @@ struct ReminderView: View {
         do {
             guard try await center.requestAuthorization(options: [.alert, .sound]) else {
                 enabled = false; errorText = "Notifications are off. Enable them for 00Quiz in iPhone Settings to use a reminder."; return
+            }
+            guard await center.notificationSettings().alertSetting == .enabled else {
+                enabled = false; errorText = "Allow alerts for 00Quiz in Settings to use a morning reminder."; return
             }
             let components = Calendar.current.dateComponents([.hour, .minute], from: selection)
             hour = components.hour ?? 8; minute = components.minute ?? 0
